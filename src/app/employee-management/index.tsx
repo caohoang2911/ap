@@ -2,14 +2,7 @@ import { hideAlert, showAlert } from '@/core/store/alert-dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useAcceptTokenAssignEmployeeToStore } from '~/src/api/app-pick/use-accept-token-assign-employee-to-store';
 import {
   useGetQRAccessTokenInfo,
@@ -23,6 +16,7 @@ import {
 import { useSetStoreEmployeeTeleId } from '~/src/api/app-pick/use-set-store-employee-tele-id';
 import { queryClient } from '~/src/api/shared/api-provider';
 import ButtonBack from '~/src/components/ButtonBack';
+import PullToRefreshFlatList from '~/src/components/shared/pull-to-refresh-flat-list';
 import EmployeeActionsBottomSheet, {
   type EmployeeActionsBottomSheetRef,
 } from '~/src/components/employee-management/employee-actions-bottom-sheet';
@@ -239,16 +233,12 @@ export default function EmployeeManagementScreen() {
           <ActivityIndicator size="large" />
         </View>
       ) : (
-        <FlatList
+        <PullToRefreshFlatList
           data={employees}
           keyExtractor={(item, index) => `${item.id ?? item.username}-${index}`}
           renderItem={renderItem}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing || (isFetching && !isLoading)}
-              onRefresh={handleRefresh}
-            />
-          }
+          refreshing={refreshing || (isFetching && !isLoading)}
+          onRefresh={handleRefresh}
           ListEmptyComponent={
             <View className="items-center pt-8">
               <Text className="text-gray-400">Không có nhân viên</Text>

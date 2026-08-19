@@ -12,7 +12,6 @@ import {
   useState,
 } from 'react';
 import { Text, View } from 'react-native';
-import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
 import { useOrderDetailForCode } from '~/src/api/app-pick/use-get-order-detail';
 import { useOrderStatusAutoRefresh } from '~/src/core/hooks/useOrderStatusAutoRefresh';
 import { useHandoverOrder } from '~/src/api/app-pick/use-handover-order';
@@ -23,6 +22,7 @@ import ImageUploader from '~/src/components/ImageUploader';
 import { SectionAlert } from '~/src/components/SectionAlert';
 import FailureReasonBottomSheet from '~/src/components/store-complete-order-scan-to-delivery/failure-reason-bottom-sheet';
 import InvoiceInfo from '~/src/components/store-complete-order-scan-to-delivery/invoice-info';
+import PullToRefreshScrollView from '~/src/components/shared/pull-to-refresh-scroll-view';
 import { ORDER_STATUS, ORDER_TAGS } from '@/core/constants/order';
 import { hideAlert, showAlert } from '~/src/core/store/alert-dialog';
 import {
@@ -147,13 +147,9 @@ const OrderScanToDelivery = () => {
   return (
     <>
       <View className="flex-1 mt-3">
-        <ScrollView
-          refreshControl={
-            <RefreshControl
-              refreshing={isOrderDetailFetching}
-              onRefresh={handleRefresh}
-            />
-          }
+        <PullToRefreshScrollView
+          refreshing={isOrderDetailFetching}
+          onRefresh={handleRefresh}
         >
           <InvoiceAlert show={isShowAlert} codAmount={codAmount} />
           <View className="flex flex-col gap-4">
@@ -166,7 +162,7 @@ const OrderScanToDelivery = () => {
               />
             </Box>
           </View>
-        </ScrollView>
+        </PullToRefreshScrollView>
       </View>
       <View className="border-t border-gray-200 pb-4">
         <View className="px-4 py-3 flex flex-row gap-3 bg-white ">

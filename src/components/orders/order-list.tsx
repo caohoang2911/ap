@@ -7,8 +7,13 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ActivityIndicator, Keyboard, Text, View } from 'react-native';
-import { FlatList, RefreshControl } from 'react-native-gesture-handler';
+import {
+  ActivityIndicator,
+  FlatList,
+  Keyboard,
+  Text,
+  View,
+} from 'react-native';
 import {
   UNSEEN_NOTI_COUNTER_POLL_MS,
   useGetUnseenNotiCounter,
@@ -30,50 +35,50 @@ import { SectionAlert } from '../SectionAlert';
 import Empty from '../shared/empty';
 import OrderListSkeleton from '../shared/skeleton/order-list-skeleton';
 import OrderItem from './order-item';
+import Header from './header';
+import PullToRefreshFlatList from '../shared/pull-to-refresh-flat-list';
 
 // Tách OrderItem thành component riêng để tránh re-render toàn bộ danh sách
-const MemoizedOrderItem = memo(
-  ({
-    item,
-    selectedOrderCounter,
-  }: {
-    item: any;
-    selectedOrderCounter: string;
-  }) => (
-    <View className="my-3">
+const MemoizedOrderItem = memo(function MemoizedOrderItem({
+  item,
+  selectedOrderCounter,
+}: {
+  item: any;
+  selectedOrderCounter: string;
+}) {
+  return (
+    <View className="mx-4 my-3">
       <OrderItem {...item} selectedOrderCounter={selectedOrderCounter} />
     </View>
-  ),
-);
+  );
+});
 
 // Footer component
-const ListFooter = memo(
-  ({
-    isFetchingNextPage,
-    hasNextPage,
-    isFetching,
-    hasItems,
-  }: {
-    isFetchingNextPage: boolean;
-    hasNextPage: boolean | undefined;
-    isFetching: boolean;
-    hasItems: boolean;
-  }) => {
-    if (isFetchingNextPage) {
-      return <ActivityIndicator color="blue" />;
-    }
+const ListFooter = memo(function ListFooter({
+  isFetchingNextPage,
+  hasNextPage,
+  isFetching,
+  hasItems,
+}: {
+  isFetchingNextPage: boolean;
+  hasNextPage: boolean | undefined;
+  isFetching: boolean;
+  hasItems: boolean;
+}) {
+  if (isFetchingNextPage) {
+    return <ActivityIndicator color="blue" />;
+  }
 
-    if (!hasNextPage && !isFetchingNextPage && !isFetching && hasItems) {
-      return (
-        <Text className="text-center text-xs text-gray-500">
-          Danh sách đã hết
-        </Text>
-      );
-    }
+  if (!hasNextPage && !isFetchingNextPage && !isFetching && hasItems) {
+    return (
+      <Text className="text-center text-xs text-gray-500">
+        Danh sách đã hết
+      </Text>
+    );
+  }
 
-    return <View />;
-  },
-);
+  return <View />;
+});
 
 const ErrorMessage = ({ error }: { error: string }) => (
   <View className="mt-2">
@@ -86,7 +91,7 @@ const ErrorMessage = ({ error }: { error: string }) => (
 const EmptyComponent = ({ isFetching }: { isFetching: boolean }) => {
   if (!isFetching) {
     return (
-      <View className="mt-3">
+      <View className="mx-4 mt-3">
         <Empty />
       </View>
     );
@@ -254,7 +259,7 @@ const OrderList = () => {
       // Hide refresh indicator after all queries complete
       setTimeout(() => setIsRefreshIndicatorVisible(false), 500);
     });
-  }, [goFirstPage, selectedOrderCounter]);
+  }, [goFirstPage, refetchGetMyProfile, refreshToken, selectedOrderCounter]);
 
   // Handle end reached - load more data
   const handleEndReached = useCallback(() => {
@@ -290,28 +295,40 @@ const OrderList = () => {
 
   // Conditional rendering based on state
   if (isLoading) {
-    return <OrderListSkeleton />;
+    return (
+      <View className="flex-1 bg-white">
+        <Header />
+        <View className="px-4">
+          <OrderListSkeleton />
+        </View>
+      </View>
+    );
   }
 
   if (hasError) {
-    return <ErrorMessage error={(ordersResponse as any)?.error} />;
+    return (
+      <View className="flex-1 bg-white">
+        <Header />
+        <View className="px-4">
+          <ErrorMessage error={(ordersResponse as any)?.error} />
+        </View>
+      </View>
+    );
   }
 
   return (
-    <View className="flex-grow mb-4">
-      <FlatList
+    <View className="mb-4 flex-grow bg-white">
+      <PullToRefreshFlatList
         className="flex-1"
         keyboardDismissMode="on-drag"
         onScrollBeginDrag={dismissKeyboardOnScroll}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         ref={flatListRef}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshIndicatorVisible}
-            onRefresh={handleRefresh}
-          />
-        }
+        refreshing={isRefreshIndicatorVisible}
+        onRefresh={handleRefresh}
+        ListHeaderComponent={Header}
+        stickyHeaderIndices={[0]}
         ListEmptyComponent={<EmptyComponent isFetching={isFetching} />}
         data={orderList}
         onEndReachedThreshold={0.3}

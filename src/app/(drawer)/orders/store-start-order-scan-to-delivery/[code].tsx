@@ -9,8 +9,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { RefreshControl, Text, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { Text, View } from 'react-native';
 import {
   useCreateInvoiceFlow,
   useCreateInvoiceProcess,
@@ -28,6 +27,7 @@ import CODReceipt from '~/src/components/CODReceipt';
 import InvoiceAlert from '~/src/components/order-scan-to-delivery/invoice-alert';
 import { SectionAlert } from '~/src/components/SectionAlert';
 import Header from '~/src/components/shared/header';
+import PullToRefreshScrollView from '~/src/components/shared/pull-to-refresh-scroll-view';
 import ScannerBox from '~/src/components/shared/scanner-box';
 import ShipperInfo from '~/src/components/shared/shipper-info';
 import Bags from '~/src/components/store-start-order-scan-to-delivery/bags';
@@ -310,13 +310,9 @@ const OrderScanToDelivery = () => {
   return (
     <>
       <View className="flex-1 mt-3">
-        <ScrollView
-          refreshControl={
-            <RefreshControl
-              refreshing={isOrderDetailFetching}
-              onRefresh={handleRefresh}
-            />
-          }
+        <PullToRefreshScrollView
+          refreshing={isOrderDetailFetching}
+          onRefresh={handleRefresh}
         >
           <InvoiceAlert show={isShowAlert} codAmount={codAmount} />
           <View className="flex flex-col gap-4">
@@ -326,7 +322,7 @@ const OrderScanToDelivery = () => {
               <Bags />
             </View>
           </View>
-        </ScrollView>
+        </PullToRefreshScrollView>
       </View>
       <View className="border-t border-gray-200 pb-4">
         <View className="px-4 py-3 bg-white gap-2">

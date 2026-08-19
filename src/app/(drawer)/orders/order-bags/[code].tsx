@@ -3,7 +3,6 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
-import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
 import { useOrderDetailForCode } from '~/src/api/app-pick/use-get-order-detail';
 import { useSetOrderBagLabels } from '~/src/api/app-pick/use-set-order-bag-labels';
 import { queryClient } from '~/src/api/shared';
@@ -14,6 +13,7 @@ import Bags from '~/src/components/order-bags/bags';
 import HeaderBag from '~/src/components/order-bags/header-bag';
 import { SectionAlert } from '~/src/components/SectionAlert';
 import { PackageSizePicker } from '~/src/components/shared/package-size-picker';
+import PullToRefreshScrollView from '~/src/components/shared/pull-to-refresh-scroll-view';
 import { hideAlert, showAlert } from '~/src/core/store/alert-dialog';
 import { setLoading } from '~/src/core/store/loading';
 import {
@@ -207,12 +207,11 @@ const OrderBags = () => {
 
   return (
     <View className="flex-1">
-      <ScrollView
+      <PullToRefreshScrollView
         className="flex-1 pt-3"
         contentContainerStyle={{ paddingBottom: 30 }}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
       >
         <View className="flex flex-col gap-4">
           <HeaderBag />
@@ -220,7 +219,7 @@ const OrderBags = () => {
           <Bags />
           <BagQuantities onHasChangedChange={handleBagQuantitiesHasChanged} />
         </View>
-      </ScrollView>
+      </PullToRefreshScrollView>
       <View className="border-t border-gray-200 bg-white pb-4">
         <View className="px-4 py-3 bg-white">
           <Button label="In tất cả" onPress={handlePrintAll} />

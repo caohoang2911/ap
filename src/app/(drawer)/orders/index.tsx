@@ -1,4 +1,3 @@
-import Container from '@/components/Container';
 import { usePdaScanTarget } from '@/core/hooks/usePdaScanTarget';
 import { useRefreshOnFocus } from '@/core/hooks/useRefreshOnFocus';
 import {
@@ -13,7 +12,6 @@ import {
 import { BarcodeScanningResult } from '~/src/types/scanner';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import Header from '~/src/components/orders/header';
 import OrderList from '~/src/components/orders/order-list';
 import ScannerBox from '~/src/components/shared/scanner-box';
 import { checkNotificationPermission } from '~/src/core/utils/notification-permission';
@@ -30,8 +28,7 @@ const Orders = () => {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerShown: true,
-      header: () => <Header />,
+      headerShown: false,
       gestureEnabled: false,
       fullScreenGestureEnabled: false,
     });
@@ -92,10 +89,8 @@ const Orders = () => {
   }, [isDoneCodepush]);
 
   return (
-    <View className="flex-1">
-      <Container>
-        <OrderList />
-      </Container>
+    <View className="flex-1 bg-white">
+      <OrderList />
       <ScannerBox
         visible={isScanQrCode}
         onSuccessBarcodeScanned={handleSuccessBarcodeScanned}

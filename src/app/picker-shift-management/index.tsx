@@ -2,19 +2,13 @@ import { hideAlert, showAlert } from '@/core/store/alert-dialog';
 import { AntDesign } from '@expo/vector-icons';
 import moment from 'moment-timezone';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
 import { useDeleteWorkShift } from '~/src/api/app-pick/use-delete-work-shift';
 import { useGetListWorkShifts } from '~/src/api/app-pick/use-get-list-work-shifts';
 import ButtonBack from '~/src/components/ButtonBack';
 import Header from '~/src/components/shared/header';
+import PullToRefreshFlatList from '~/src/components/shared/pull-to-refresh-flat-list';
 import WorkShiftActionsBottomSheet, {
   type WorkShiftActionsBottomSheetRef,
 } from '~/src/components/picker-shift-management/work-shift-actions-bottom-sheet';
@@ -211,7 +205,7 @@ export default function PickerShiftManagementScreen() {
             <ActivityIndicator size="large" />
           </View>
         ) : (
-          <FlatList
+          <PullToRefreshFlatList
             className="flex-1"
             data={selectedDayShifts}
             keyExtractor={(item) => String(item.id)}
@@ -222,12 +216,8 @@ export default function PickerShiftManagementScreen() {
               paddingTop: 8,
               paddingBottom: 24,
             }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing || (isFetching && !isLoading)}
-                onRefresh={handleRefresh}
-              />
-            }
+            refreshing={refreshing || (isFetching && !isLoading)}
+            onRefresh={handleRefresh}
             ListEmptyComponent={
               <View className="pt-4 items-center">
                 <Text className="text-gray-400">Chưa có ca làm việc</Text>

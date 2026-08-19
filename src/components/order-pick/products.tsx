@@ -14,7 +14,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { FlatList, RefreshControl } from 'react-native-gesture-handler';
+import { FlatList } from 'react-native';
 
 if (
   Platform.OS === 'android' &&
@@ -23,6 +23,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 import { queryClient } from '~/src/api/shared';
+import PullToRefreshFlatList from '~/src/components/shared/pull-to-refresh-flat-list';
 import {
   resetOrderPick,
   setCurrentCode,
@@ -415,8 +416,7 @@ const OrderPickProducts = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      <UserNote orderDetail={orderDetail} />
-      <FlatList
+      <PullToRefreshFlatList
         ref={flatListRef}
         className="flex-1"
         keyboardDismissMode="on-drag"
@@ -426,9 +426,9 @@ const OrderPickProducts = () => {
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         keyExtractor={keyExtractor}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
+        ListHeaderComponent={<UserNote orderDetail={orderDetail} />}
         ListFooterComponent={listFooter}
         data={filteredProducts || []}
         ListEmptyComponent={

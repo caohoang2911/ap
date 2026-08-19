@@ -17,8 +17,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { RefreshControl, Text, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { Text, View } from 'react-native';
 import {
   runCreateOrPrintInvoice,
   useCreateInvoiceFlow,
@@ -32,6 +31,7 @@ import { useSetOrderScannedBagLabelScanned } from '~/src/api/app-pick/use-set-or
 import { queryClient } from '~/src/api/shared/api-provider';
 import { Button } from '~/src/components/Button';
 import CODReceipt from '~/src/components/CODReceipt';
+import PullToRefreshScrollView from '~/src/components/shared/pull-to-refresh-scroll-view';
 import Bags from '~/src/components/order-scan-to-delivery/bags';
 import FulfillErrorAlert from '~/src/components/order-scan-to-delivery/fulfill-error-alert';
 import InvoiceAlert from '~/src/components/order-scan-to-delivery/invoice-alert';
@@ -690,13 +690,9 @@ const OrderScanToDelivery = () => {
   return (
     <>
       <View className="flex-1 mt-3">
-        <ScrollView
-          refreshControl={
-            <RefreshControl
-              refreshing={isOrderDetailFetching}
-              onRefresh={handleRefresh}
-            />
-          }
+        <PullToRefreshScrollView
+          refreshing={isOrderDetailFetching}
+          onRefresh={handleRefresh}
         >
           <InvoiceAlert
             show={showAlert}
@@ -719,7 +715,7 @@ const OrderScanToDelivery = () => {
               <Bags bagLabels={header?.bagLabels} />
             </View>
           </View>
-        </ScrollView>
+        </PullToRefreshScrollView>
       </View>
       {(actionType || isPickupInvoiceOnly || isShipperInvoiceReprint) && (
         <View className="border-t border-gray-200 pb-4">

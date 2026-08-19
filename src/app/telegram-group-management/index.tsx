@@ -5,10 +5,8 @@ import * as Linking from 'expo-linking';
 import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Platform,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -23,6 +21,7 @@ import {
 import { useRemoveEmployeeFromStoreTeleMentionList } from '~/src/api/app-pick/use-remove-employee-from-store-tele-mention-list';
 import { useSetStoreEmployeeTeleId } from '~/src/api/app-pick/use-set-store-employee-tele-id';
 import ButtonBack from '~/src/components/ButtonBack';
+import PullToRefreshFlatList from '~/src/components/shared/pull-to-refresh-flat-list';
 import EmployeeSelection from '~/src/components/shared/employee-selection';
 import Header from '~/src/components/shared/header';
 import SetTeleIdBottomSheet, {
@@ -228,16 +227,12 @@ export default function TelegramGroupManagementScreen() {
           <ActivityIndicator size="large" />
         </View>
       ) : (
-        <FlatList
+        <PullToRefreshFlatList
           data={mentionedEmployees}
           keyExtractor={(item, index) => `${item.id ?? item.username}-${index}`}
           renderItem={renderItem}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing || (isFetching && !isLoading)}
-              onRefresh={handleRefresh}
-            />
-          }
+          refreshing={refreshing || (isFetching && !isLoading)}
+          onRefresh={handleRefresh}
           ListEmptyComponent={
             <View className="items-center px-6 pt-8">
               <Text className="text-center text-gray-400">

@@ -152,13 +152,13 @@ const Header = () => {
 
   const renderStoreSelection = useMemo(() => {
     return (
-      <View className="flex gap-1 mt-1">
-        <View className="flex flex-row items-center gap-1 self-start">
+      <View className="mt-1.5 flex-row flex-wrap items-center gap-1.5">
+        <View className="flex-row items-center self-start">
           {isLoadingRefreshToken || isLoadingGetMyProfile ? (
             <Skeleton width={100} height={20} variant="round-rectangle" />
           ) : (
             <Pressable onPress={handleOpenStoreSelection} hitSlop={10}>
-              <View className="flex flex-row items-center rounded-full px-1.5 py-1 bg-blue-50">
+              <View className="flex-row items-center rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
                 <Ionicons
                   className="mr-1"
                   name="storefront-outline"
@@ -180,7 +180,7 @@ const Header = () => {
         {isLoadingRefreshToken || isLoadingGetMyProfile ? (
           <Skeleton width={120} height={20} variant="round-rectangle" />
         ) : (
-          <View className="flex flex-row items-center gap-2 self-start flex-wrap">
+          <View className="flex-row flex-wrap items-center gap-1.5 self-start">
             <Badge
               label={
                 !isPickerShiftStatusOnShift
@@ -207,6 +207,7 @@ const Header = () => {
     userInfo,
     storeName,
     isLoadingRefreshToken,
+    isLoadingGetMyProfile,
     isPickerShiftStatusOnShift,
     handleOpenStoreSelection,
     missingInvoiceCount,
@@ -259,9 +260,9 @@ const Header = () => {
   }
 
   return (
-    <View className="py-2 bg-blue-100">
-      <View className="flex px-4 flex-row items-start mb-2 gap-2">
-        <TouchableOpacity onPress={toggleMenu} className="self-start">
+    <View className="border-b border-slate-200 bg-white pb-2 pt-2">
+      <View className="flex-row items-start gap-2.5 px-4 pb-2">
+        <TouchableOpacity onPress={toggleMenu} className="self-start pt-0.5">
           <Avatar>
             <AvatarFallback
               className="bg-blue-500"
@@ -272,10 +273,10 @@ const Header = () => {
           </Avatar>
         </TouchableOpacity>
         <View className="flex-1 min-w-0">
-          <View className="flex flex-row items-start justify-between gap-2">
-            <View className="flex-1 min-w-0 flex-row items-center gap-1.5">
+          <View className="flex-row items-center justify-between gap-2">
+            <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
               <Text
-                className="font-semibold text-base shrink"
+                className="shrink text-[15px] font-bold text-slate-900"
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -284,7 +285,7 @@ const Header = () => {
               <Badge label={roleName || userInfo?.role} />
             </View>
             <Pressable
-              className="self-start pt-0.5"
+              className="h-9 w-9 items-center justify-center rounded-full bg-slate-50"
               hitSlop={10}
               onPress={() => router.push(ROUTES.APP.NOTIFICATIONS)}
             >
@@ -308,10 +309,10 @@ const Header = () => {
           {isDriver && renderDriverSelection}
         </View>
       </View>
-      <View className="flex flex-row mt-2 px-4 justify-between z-10 items-center gap-3">
+      <View className="z-10 flex-row items-center justify-between gap-3 border-y border-slate-100 bg-slate-50 px-4 py-2">
         <InputSearch toggleScanQrCode={() => toggleScanQrCode(true)} />
       </View>
-      <View className="px-4">
+      <View className="px-4 pt-2">
         <TabsStatus />
       </View>
       {role !== Role.DRIVER && (

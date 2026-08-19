@@ -1,10 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { FlatList, RefreshControl } from 'react-native-gesture-handler';
 import { usePullNotis } from '~/src/api/app-pick/use-pull-notis';
 import NotificationItem from '~/src/components/notifications/notification-item';
 import type { AppNotification } from '~/src/types/notification';
+import PullToRefreshFlatList from '~/src/components/shared/pull-to-refresh-flat-list';
 
 export default function NotificationsScreen() {
   const { data, isLoading, isFetching, refetch } = usePullNotis();
@@ -61,19 +61,15 @@ export default function NotificationsScreen() {
           <ActivityIndicator size="large" />
         </View>
       ) : (
-        <FlatList
+        <PullToRefreshFlatList
           data={notifications}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={
             notifications.length === 0 ? { flexGrow: 1 } : undefined
           }
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing || (isFetching && !isLoading)}
-              onRefresh={handleRefresh}
-            />
-          }
+          refreshing={refreshing || (isFetching && !isLoading)}
+          onRefresh={handleRefresh}
           ListEmptyComponent={ListEmptyComponent}
         />
       )}
