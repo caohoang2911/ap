@@ -7,11 +7,12 @@ export type OrderStatus =
   | 'STORE_PICKING'
   | 'STORE_PACKED'
   | 'BOOKED_SHIPPER'
-  | 'SHIPPING';
+  | 'SHIPPING'
+  | 'TRANSFERRED'
+  | 'COMPLETED'
+  | 'STORE_TRANSFER_SHIPPER';
 export type OrderStatusDriver =
-  | 'UPCOMING_DELIVERY'
-  | 'ON_TIME_DELIVERY'
-  | 'OVERDUE_DELIVERY';
+  'UPCOMING_DELIVERY' | 'ON_TIME_DELIVERY' | 'OVERDUE_DELIVERY';
 
 export enum OrderStatusValue {
   ALL = 'ALL',
@@ -20,6 +21,8 @@ export enum OrderStatusValue {
   STORE_PACKED = 'STORE_PACKED',
   BOOKED_SHIPPER = 'BOOKED_SHIPPER',
   SHIPPING = 'SHIPPING',
+  TRANSFERRED = 'TRANSFERRED',
+  COMPLETED = 'COMPLETED',
 }
 
 export enum PackageSize {

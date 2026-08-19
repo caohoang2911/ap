@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, Text } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
 import {
+  runCreateOrPrintInvoice,
   useCreateInvoiceFlow,
   useCreateInvoiceProcess,
   usePrintCodReceiptProcess,
@@ -74,9 +75,7 @@ const OrderActionsSubmenuBottomSheet = ({
   const { mutateAsync: printInvoice, isPending: isPrintingInvoice } =
     useCreateInvoiceProcess({
       successMessage: 'In lại hóa đơn thành công',
-      onSuccess: () => {
-        invalidateOrderDetail();
-      },
+      onSuccess: invalidateOrderDetail,
     });
   const { mutate: printCodReceipt } = usePrintCodReceiptProcess({
     successMessage: 'In phiếu thu COD thành công',
@@ -212,24 +211,13 @@ const OrderActionsSubmenuBottomSheet = ({
         // Chống double-tap: một luồng tạo/in đang chạy thì bỏ qua.
         if (isCreatingInvoice || isPrintingInvoice) break;
 
-        const existingInvoiceCode = (
-          invoiceCode ||
-          orderDetail?.header?.invoiceCode ||
-          ''
-        ).trim();
-
         setLoading(true);
-
-        if (existingInvoiceCode) {
-          // Đã có hóa đơn → in lại luôn, không gọi createInvoice để tránh tạo trùng.
-          void printInvoiceThenCodReceipt(existingInvoiceCode);
-        } else {
-          // Chưa có hóa đơn → tạo trước, tạo xong mới đi tiếp flow in.
-          createInvoiceFlow({
-            orderCode: effectiveOrderCode,
-            note: 'In lại hóa đơn',
-          });
-        }
+        runCreateOrPrintInvoice({
+          orderCode: effectiveOrderCode,
+          existingInvoiceCode: invoiceCode || orderDetail?.header?.invoiceCode,
+          printExistingInvoice: printInvoiceThenCodReceipt,
+          createMissingInvoice: createInvoiceFlow,
+        });
         break;
       }
       case 'history-order':

@@ -204,14 +204,6 @@ const OrderScanToDelivery = () => {
     };
   }, []);
 
-  if (orderDetailError) {
-    return (
-      <SectionAlert variant="danger">
-        <Text>{orderDetailError}</Text>
-      </SectionAlert>
-    );
-  }
-
   const { mutate: setOrderScannedBagLabel } =
     useSetOrderScannedBagLabelScanned();
 
@@ -220,20 +212,54 @@ const OrderScanToDelivery = () => {
     return orderBags.every((bag) => bag.isDone || bag.lastScannedTime);
   }, [orderBags]);
 
-  const handleScanQrCodeProduct = (result: BarcodeScanningResult) => {
-    scanQrCodeSuccess(result, () => {
-      if (result?.data) {
-        setOrderScannedBagLabel({ orderCode: code, bagCode: result?.data });
-      }
-    });
-  };
+  const isShipperDelivery = !!shipping?.driverName;
+
+  const btnWithoutInvoiceLabel = useMemo(() => {
+    if (isShipperDelivery) {
+      return 'Xác nhận giao cho tài xế';
+    }
+    return 'Bắt đầu giao hàng nội khu';
+  }, [isShipperDelivery]);
+
+  const btnWithInvoiceLabel = useMemo(() => {
+    if (isShipperDelivery) {
+      return 'Tạo hoá đơn & giao cho tài xế';
+    }
+    return 'Tạo hoá đơn & giao hàng nội khu';
+  }, [isShipperDelivery]);
+
+  const isShowAlert = useMemo(() => {
+    return !tags?.includes(ORDER_TAGS.ORDER_CREATED_INVOICE);
+  }, [tags]);
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['orderDetail', code] });
+  }, []);
+
+  const handleReceiptCaptureComplete = useCallback(
+    (base64String: string) => {
+      setShowPrintReceipt(false);
+      printCodReceipt({ codReceiptBase64String: base64String.trim() });
+    },
+    [printCodReceipt],
+  );
+
+  const handleScanQrCodeProduct = useCallback(
+    (result: BarcodeScanningResult) => {
+      scanQrCodeSuccess(result, () => {
+        if (result?.data) {
+          setOrderScannedBagLabel({ orderCode: code, bagCode: result?.data });
+        }
+      });
+    },
+    [code, setOrderScannedBagLabel],
+  );
 
   // Quét túi bằng máy PDA (đầu đọc laser) dùng chung handler với camera.
   usePdaScanTarget(handleScanQrCodeProduct);
 
   const { checkShift } = useCheckShift(() => {
     showAlert({
-      // Cùng stackId → tránh double-tap tạo nhiều dialog confirm gọi tạo hóa đơn.
       stackId: `create-invoice-${code}`,
       title: btnWithInvoiceLabel + '?',
       onConfirm: () => {
@@ -263,43 +289,19 @@ const OrderScanToDelivery = () => {
     });
   };
 
-  const isShipperDelivery = !!shipping?.driverName;
-
-  const btnWithoutInvoiceLabel = useMemo(() => {
-    if (isShipperDelivery) {
-      return 'Xác nhận giao cho tài xế';
-    }
-    return 'Bắt đầu giao hàng nội khu';
-  }, [isShipperDelivery]);
-
-  const btnWithInvoiceLabel = useMemo(() => {
-    if (isShipperDelivery) {
-      return 'Tạo hoá đơn & giao cho tài xế';
-    }
-    return 'Tạo hoá đơn & giao hàng nội khu';
-  }, [isShipperDelivery]);
-
   const handleStartScanQrCodeProduct = () => {
     toggleStoreStartScanQrCodeProduct(true);
   };
 
-  const isShowAlert = useMemo(() => {
-    return !tags?.includes(ORDER_TAGS.ORDER_CREATED_INVOICE);
-  }, [tags]);
-
-  const handleRefresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['orderDetail', code] });
-  }, []);
-
-  const handleReceiptCaptureComplete = useCallback(
-    (base64String: string) => {
-      setShowPrintReceipt(false);
-      printCodReceipt({ codReceiptBase64String: base64String.trim() });
-    },
-    [printCodReceipt],
-  );
-
   const isDisabled = !orderBags?.length || isOrderDetailLoading;
+
+  if (orderDetailError) {
+    return (
+      <SectionAlert variant="danger">
+        <Text>{orderDetailError}</Text>
+      </SectionAlert>
+    );
+  }
 
   if (isOrderDetailLoading) {
     return <ScanBagsSkeleton />;

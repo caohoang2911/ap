@@ -9,7 +9,7 @@ import { getPrinterHost } from '~/src/core/utils/printer';
 import { showPrinterConnectionFailMessage } from '~/src/core/utils/printer-connection';
 import { useGenXPrinterPrintData } from './use-gen-x-printer-print-data';
 
-type Variables = {
+export type InvoiceVariables = {
   orderCode: string;
   note?: string;
 };
@@ -141,14 +141,47 @@ const useFetchBase64ImageByInvoiceURL = (
   });
 };
 
-const createInvoice = async (params: Variables): Promise<Response> => {
+const createInvoice = async (params: InvoiceVariables): Promise<Response> => {
   return await axiosClient.post('app-pick/createInvoice', params);
 };
 
 export const useCreateInvoice = () => {
   return useMutation({
-    mutationFn: (params: Variables) => createInvoice(params),
+    mutationFn: (params: InvoiceVariables) => createInvoice(params),
   });
+};
+
+type RunCreateOrPrintInvoiceOptions = {
+  orderCode: string;
+  existingInvoiceCode?: string | null;
+  printExistingInvoice: (invoiceCode: string) => void | Promise<void>;
+  createMissingInvoice: (variables: InvoiceVariables) => void;
+  note?: string;
+};
+
+/**
+ * Luồng dùng chung cho action "Tạo lại hóa đơn": có mã HĐ thì in ngay; chưa có
+ * thì tạo với note rồi caller tiếp tục in trong callback onSuccess của mutation.
+ */
+export const runCreateOrPrintInvoice = ({
+  orderCode,
+  existingInvoiceCode,
+  printExistingInvoice,
+  createMissingInvoice,
+  note = 'In lại hóa đơn',
+}: RunCreateOrPrintInvoiceOptions) => {
+  const normalizedInvoiceCode = existingInvoiceCode?.trim();
+
+  if (normalizedInvoiceCode) {
+    // mutateAsync reject khi lỗi máy in/network; mutation đã tự show lỗi và tắt
+    // loading, helper chỉ cần consume rejection để không tạo unhandled promise.
+    void Promise.resolve()
+      .then(() => printExistingInvoice(normalizedInvoiceCode))
+      .catch(() => undefined);
+    return;
+  }
+
+  createMissingInvoice({ orderCode, note });
 };
 
 /**
@@ -175,7 +208,11 @@ export type UseCreateInvoiceFlowOptions = {
    * `response` là payload createInvoice — chứa `invoiceCode`, và cũng có thể là
    * `status: 'FAIL'` (FAIL vẫn đi vào nhánh này để giữ nguyên flow cũ).
    */
-  onSuccess?: (orderCode: string, response?: CreateInvoiceResponse) => void;
+  onSuccess?: (
+    orderCode: string,
+    response?: CreateInvoiceResponse,
+  ) => void | Promise<void>;
+  onError?: (error: unknown) => void;
 };
 
 const CREATE_INVOICE_MSG = {
@@ -186,7 +223,7 @@ const CREATE_INVOICE_MSG = {
 /** Flow tạo hóa đơn: gọi API createInvoice, show message cố định (không dùng nội dung lỗi từ server). */
 export const useCreateInvoiceFlow = (options?: UseCreateInvoiceFlowOptions) => {
   return useMutation({
-    mutationFn: async (params: Variables): Promise<Response> => {
+    mutationFn: async (params: InvoiceVariables): Promise<Response> => {
       // Chặn tạo hóa đơn trùng: nếu đơn này đang có request createInvoice chạy
       // dở thì bỏ qua lần gọi thứ 2 (giữ nguyên loading của request đầu).
       if (inFlightCreateInvoice.has(params.orderCode)) {
@@ -233,13 +270,21 @@ export const useCreateInvoiceFlow = (options?: UseCreateInvoiceFlowOptions) => {
         inFlightCreateInvoice.delete(params.orderCode);
       }
     },
-    onSuccess: (data, variables) => {
-      options?.onSuccess?.(variables.orderCode, data);
+    onSuccess: async (data, variables) => {
+      try {
+        await options?.onSuccess?.(variables.orderCode, data);
+      } catch (error) {
+        // Callback thường tiếp tục sang mutation in hóa đơn. Mutation con đã tự
+        // hiển thị lỗi; tại đây consume rejection và báo caller reset local mode.
+        setLoading(false);
+        options?.onError?.(error);
+      }
     },
     onError: (error) => {
       // Request trùng bị chặn: không tắt loading (request đầu vẫn đang chạy).
       if (error instanceof DuplicateCreateInvoiceError) return;
       setLoading(false);
+      options?.onError?.(error);
     },
   });
 };
@@ -268,21 +313,30 @@ const sendToPrinter = async (
 };
 
 export type UseCreateInvoiceProcessOptions = {
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
+  onError?: (error: unknown) => void;
   successMessage?: string;
+  loadingMessage?: string;
+  keepLoadingOnSuccess?: boolean;
 };
 
 export const useCreateInvoiceProcess = (
   options?: UseCreateInvoiceProcessOptions,
 ) => {
-  const { onSuccess, successMessage } = options ?? {};
+  const {
+    onSuccess,
+    onError,
+    successMessage,
+    loadingMessage,
+    keepLoadingOnSuccess = false,
+  } = options ?? {};
   const { mutateAsync: genXPrinterPrintDataAsync } = useGenXPrinterPrintData();
   const { mutateAsync: fetchBase64ImageByInvoiceURLAsync } =
     useFetchBase64ImageByInvoiceURL();
 
   return useMutation({
     mutationFn: async (params: { orderCode: string }): Promise<any> => {
-      setLoading(true);
+      setLoading(true, loadingMessage);
       let client: TcpSocket.Socket | null = null;
       try {
         client = await checkPrinterConnection();
@@ -341,10 +395,21 @@ export const useCreateInvoiceProcess = (
         throw error;
       }
     },
-    onSuccess: (data: any) => {
-      setLoading(false);
+    onSuccess: async (data: any) => {
+      if (!keepLoadingOnSuccess) {
+        setLoading(false);
+      }
       if (data && !data.error) {
-        onSuccess?.();
+        try {
+          await onSuccess?.();
+        } catch (error) {
+          // Continuation thường invalidate/navigate. Reset local state tại hook,
+          // rồi rethrow để mutateAsync caller biết tiến trình chưa hoàn tất và
+          // không tiếp tục sang COD capture.
+          setLoading(false);
+          onError?.(error);
+          throw error;
+        }
       }
     },
     onError: (error: unknown) => {
@@ -357,14 +422,15 @@ export const useCreateInvoiceProcess = (
         type: 'danger',
       });
       setLoading(false);
+      onError?.(error);
     },
   });
 };
 
 export type UsePrintCodReceiptProcessOptions = {
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
   /** Gọi khi kết thúc tiến trình (thành công hoặc thất bại). */
-  onSettled?: () => void;
+  onSettled?: () => void | Promise<void>;
   successMessage?: string;
 };
 
@@ -429,9 +495,13 @@ export const usePrintCodReceiptProcess = (
         setLoading(false);
       }
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       if (data && !data.error) {
-        onSuccess?.();
+        try {
+          await onSuccess?.();
+        } catch {
+          setLoading(false);
+        }
       }
     },
     onError: (error: any) => {
@@ -445,8 +515,12 @@ export const usePrintCodReceiptProcess = (
         type: 'danger',
       });
     },
-    onSettled: () => {
-      onSettled?.();
+    onSettled: async () => {
+      try {
+        await onSettled?.();
+      } catch {
+        setLoading(false);
+      }
     },
   });
 };

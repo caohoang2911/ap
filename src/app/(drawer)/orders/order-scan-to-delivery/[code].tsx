@@ -20,6 +20,7 @@ import React, {
 import { RefreshControl, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import {
+  runCreateOrPrintInvoice,
   useCreateInvoiceFlow,
   useCreateInvoiceProcess,
   usePrintCodReceiptProcess,
@@ -121,6 +122,13 @@ const OrderScanToDelivery = () => {
   const { deliveryType, status, tags, handoverStatus, codAmount } =
     header || {};
 
+  const hasStoreTransferShipperLog = Boolean(
+    header?.logs?.some((log) => log.action === 'STORE_TRANSFER_SHIPPER'),
+  );
+  const isShipperInvoiceReprint =
+    deliveryType === ORDER_DELIVERY_TYPE.SHIPPER_DELIVERY &&
+    hasStoreTransferShipperLog;
+
   const isOfflineHomeDelivery =
     deliveryType === ORDER_DELIVERY_TYPE.OFFLINE_HOME_DELIVERY;
 
@@ -165,13 +173,16 @@ const OrderScanToDelivery = () => {
     };
   }, []);
 
+  const invoiceHandoverInProgressRef = useRef(false);
   const { isPending: isLoadingHandoverOrder, mutateAsync: handoverOrder } =
     useHandoverOrder(() => {
       showMessage({
         message: handoverSuccessMessage,
         type: 'success',
       });
-      setLoading(false);
+      if (!invoiceHandoverInProgressRef.current) {
+        setLoading(false);
+      }
 
       setUploadedImages('', true);
       queryClient.invalidateQueries({ queryKey: ['orderDetail', code] });
@@ -185,18 +196,50 @@ const OrderScanToDelivery = () => {
       }
     });
 
+  const invoiceProcessModeRef = useRef<'CREATE' | 'REPRINT'>('CREATE');
+  useEffect(() => {
+    invoiceProcessModeRef.current = 'CREATE';
+    setShowPrintReceipt(false);
+  }, [code]);
+
   const {
     mutateAsync: processCreateInvoice,
     isPending: isLoadingCreateInvoice,
   } = useCreateInvoiceProcess({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orderDetail', code] });
+    loadingMessage: 'Vui lòng đợi in hóa đơn...',
+    keepLoadingOnSuccess: true,
+    onError: () => {
+      invoiceProcessModeRef.current = 'CREATE';
+      setShowPrintReceipt(false);
+    },
+    onSuccess: async () => {
+      await invalidateOrderDetail();
+
+      if (invoiceProcessModeRef.current === 'REPRINT') {
+        if (!!Number(codAmount)) {
+          setShowPrintReceipt(true);
+          setLoading(true, 'Đang chuẩn bị phiếu thu COD...');
+        } else {
+          invoiceProcessModeRef.current = 'CREATE';
+          setLoading(false);
+        }
+        return;
+      }
 
       // Đơn có COD: KHÔNG back ở đây. Phải đợi in phiếu thu COD xong mới rời màn
       // (xử lý ở printCodReceipt.onSettled bên dưới). Nếu back ngay, <CODReceipt>
       // bị unmount trước khi capture → phiếu thu COD không được in.
       if (!!Number(codAmount)) return;
 
+      // Flow shipper ở lại màn hình để detail reload và đổi nút thành "In hóa đơn"
+      // theo log STORE_TRANSFER_SHIPPER.
+      if (deliveryType === ORDER_DELIVERY_TYPE.SHIPPER_DELIVERY) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+
       if (isMultiGroup) {
         if (assertGroupShippingReadyForSubmit()) {
           router.back();
@@ -207,33 +250,60 @@ const OrderScanToDelivery = () => {
     },
   });
 
-  const { mutateAsync: printCodReceipt } = usePrintCodReceiptProcess({
-    successMessage: 'In phiếu thu COD thành công',
-    // In phiếu thu xong (thành công hoặc thất bại) mới rời màn — thay cho nhánh
-    // router.back() của đơn không COD ở processCreateInvoice.onSuccess.
-    onSettled: () => {
-      if (isMultiGroup) {
-        if (assertGroupShippingReadyForSubmit()) {
-          router.back();
-        }
-      } else {
-        router.back();
-      }
-    },
-  });
-
-  const createInvoiceFlowOrderCodeRef = useRef<string | null>(null);
-  const { mutate: createInvoiceFlow, data: createInvoiceFlowData } =
-    useCreateInvoiceFlow({
-      onSuccess: async (orderCode) => {
+  const { mutateAsync: printCodReceipt, isPending: isPrintingCodReceipt } =
+    usePrintCodReceiptProcess({
+      successMessage: 'In phiếu thu COD thành công',
+      // In phiếu thu xong (thành công hoặc thất bại) mới rời màn — thay cho nhánh
+      // router.back() của đơn không COD ở processCreateInvoice.onSuccess.
+      onSettled: async () => {
+        const wasReprint = invoiceProcessModeRef.current === 'REPRINT';
+        // Cleanup trước mọi await để ref không bị kẹt nếu invalidate thất bại.
+        invoiceProcessModeRef.current = 'CREATE';
+        setShowPrintReceipt(false);
+        setLoading(true, 'Đang cập nhật đơn hàng...');
         await invalidateOrderDetail();
-        await processCreateInvoice({ orderCode });
-        if (!!Number(codAmount)) {
-          setShowPrintReceipt(true);
+
+        if (wasReprint) {
           setLoading(false);
+          return;
+        }
+
+        if (deliveryType === ORDER_DELIVERY_TYPE.SHIPPER_DELIVERY) {
+          setLoading(false);
+          return;
+        }
+
+        setLoading(false);
+
+        if (isMultiGroup) {
+          if (assertGroupShippingReadyForSubmit()) {
+            router.back();
+          }
+        } else {
+          router.back();
         }
       },
     });
+
+  const createInvoiceFlowOrderCodeRef = useRef<string | null>(null);
+  const {
+    mutate: createInvoiceFlow,
+    data: createInvoiceFlowData,
+    isPending: isCreatingInvoice,
+  } = useCreateInvoiceFlow({
+    onError: () => {
+      invoiceProcessModeRef.current = 'CREATE';
+      setShowPrintReceipt(false);
+    },
+    onSuccess: async (orderCode) => {
+      await invalidateOrderDetail();
+      await processCreateInvoice({ orderCode });
+      if (!!Number(codAmount)) {
+        setShowPrintReceipt(true);
+        setLoading(true, 'Đang chuẩn bị phiếu thu COD...');
+      }
+    },
+  });
 
   const invoiceCode =
     orderDetail?.header?.invoiceCode ??
@@ -248,12 +318,22 @@ const OrderScanToDelivery = () => {
     [handoverStatus],
   );
 
+  const isPickupInvoiceOnly =
+    deliveryType === ORDER_DELIVERY_TYPE.CUSTOMER_PICKUP &&
+    (status === ORDER_STATUS.COMPLETED || status === ORDER_STATUS.TRANSFERRED);
+
   const actionTypeWithInvoice = useMemo(() => {
+    if (isShipperInvoiceReprint) {
+      return 'Tạo lại hoá đơn';
+    }
+    if (isPickupInvoiceOnly) {
+      return 'Tạo lại hoá đơn';
+    }
     if (deliveryType === ORDER_DELIVERY_TYPE.SHIPPER_DELIVERY) {
       return 'Tạo hoá đơn & giao cho tài xế';
     }
     return 'Tạo hoá đơn & giao cho khách';
-  }, [deliveryType]);
+  }, [deliveryType, isPickupInvoiceOnly, isShipperInvoiceReprint]);
 
   const generateMessageCreateInvoice = useMemo(() => {
     if (deliveryType === ORDER_DELIVERY_TYPE.SHIPPER_DELIVERY) {
@@ -273,33 +353,63 @@ const OrderScanToDelivery = () => {
       // Cùng stackId → double-tap nút / auto-trigger sau scan túi (PICK UP) chỉ
       // giữ 1 dialog confirm, không stack thành nhiều popup gọi tạo hóa đơn.
       stackId: `create-invoice-${code}`,
-      title: isShipperDelivery
-        ? 'Tạo hoá đơn & hoàn tất giao hàng'
-        : 'Tạo hoá đơn & hoàn tất đơn hàng',
-      message: generateMessageCreateInvoice,
+      title: isShipperInvoiceReprint
+        ? 'Tạo lại hoá đơn?'
+        : isShipperDelivery
+          ? 'Tạo hoá đơn & hoàn tất giao hàng'
+          : isPickupInvoiceOnly
+            ? 'Tạo lại hoá đơn?'
+            : 'Tạo hoá đơn & hoàn tất đơn hàng',
+      message: isShipperInvoiceReprint ? null : generateMessageCreateInvoice,
       isHideCancelButton: true,
       blockDismiss: true,
       onConfirm: async () => {
         hideAlert();
         createInvoiceFlowOrderCodeRef.current = code;
-        setLoading(true);
+        setLoading(true, 'Vui lòng đợi in hóa đơn...');
 
-        const result = await handoverOrder({
-          orderCode: code,
-          proofImages: uploadedImages,
-        });
-
-        if (result.error) {
-          setLoading(false);
-          showMessage({
-            message: result.error,
-            type: 'danger',
+        // PICKUP đã hoàn tất/chuyển giao và SHIPPER đã có log handover nên không
+        // gọi handoverOrder lại. Dùng chung rule: có mã HĐ thì in, chưa có thì
+        // tạo với note "In lại hóa đơn" rồi callback createInvoiceFlow sẽ in.
+        if (isShipperInvoiceReprint || isPickupInvoiceOnly) {
+          invoiceProcessModeRef.current = 'REPRINT';
+          runCreateOrPrintInvoice({
+            orderCode: code,
+            existingInvoiceCode: invoiceCode,
+            printExistingInvoice: () =>
+              processCreateInvoice({ orderCode: code }),
+            createMissingInvoice: createInvoiceFlow,
           });
-
           return;
         }
 
-        createInvoiceFlow({ orderCode: code });
+        invoiceHandoverInProgressRef.current = true;
+        try {
+          const result = await handoverOrder({
+            orderCode: code,
+            proofImages: uploadedImages,
+          });
+
+          if (result.error) {
+            setLoading(false);
+            showMessage({
+              message: result.error,
+              type: 'danger',
+            });
+            return;
+          }
+
+          // Handover callback đã chạy trong lúc ref=true nên loading vẫn được
+          // giữ. Từ đây mutation tạo/in hóa đơn tiếp quản loading.
+          invoiceHandoverInProgressRef.current = false;
+          createInvoiceFlow({ orderCode: code });
+        } catch {
+          // useHandoverOrder.onError đã tắt loading; consume mutateAsync reject
+          // để callback confirm không tạo unhandled Promise rejection.
+          setLoading(false);
+        } finally {
+          invoiceHandoverInProgressRef.current = false;
+        }
       },
     });
   });
@@ -455,6 +565,8 @@ const OrderScanToDelivery = () => {
   }, [tags]);
 
   const disableActionWithInvoice = useMemo(() => {
+    if (isPickupInvoiceOnly || isShipperInvoiceReprint) return false;
+
     const hasDriverInfo = hasOrderDriverInfo(header?.shipping);
     const baseDisable =
       !orderBags.length || isOrderDetailLoading || handoverStatus === 'DISABLE';
@@ -474,15 +586,23 @@ const OrderScanToDelivery = () => {
     header?.shipping,
     deliveryType,
     status,
+    isPickupInvoiceOnly,
+    isShipperInvoiceReprint,
   ]);
 
   const renderAction = useMemo(() => {
     const isDisabledWithoutInvoice =
       !orderBags.length || isOrderDetailLoading || handoverStatus === 'DISABLE';
-    return isAllDone ? (
+    return isAllDone || isPickupInvoiceOnly || isShipperInvoiceReprint ? (
       isOfflineHomeDelivery ? (
         <Button
-          loading={isLoadingHandoverOrder || isLoadingCreateInvoice}
+          loading={
+            isLoadingHandoverOrder ||
+            isCreatingInvoice ||
+            isLoadingCreateInvoice ||
+            isPrintingCodReceipt ||
+            showPrintReceipt
+          }
           onPress={handleStartDeliveryWithoutInvoice}
           label={actionType}
           disabled={isDisabledWithoutInvoice}
@@ -490,7 +610,13 @@ const OrderScanToDelivery = () => {
         />
       ) : (
         <Button
-          loading={isLoadingHandoverOrder || isLoadingCreateInvoice}
+          loading={
+            isLoadingHandoverOrder ||
+            isCreatingInvoice ||
+            isLoadingCreateInvoice ||
+            isPrintingCodReceipt ||
+            showPrintReceipt
+          }
           onPress={handleCheckoutOrderBagsWithInvoice}
           label={actionTypeWithInvoice}
           disabled={disableActionWithInvoice}
@@ -506,9 +632,14 @@ const OrderScanToDelivery = () => {
     );
   }, [
     isAllDone,
+    isPickupInvoiceOnly,
+    isShipperInvoiceReprint,
     orderBags,
     isLoadingHandoverOrder,
     isLoadingCreateInvoice,
+    isCreatingInvoice,
+    isPrintingCodReceipt,
+    showPrintReceipt,
     handleStartDeliveryWithoutInvoice,
     handleCheckoutOrderBagsWithInvoice,
     actionType,
@@ -526,7 +657,20 @@ const OrderScanToDelivery = () => {
 
   const handleReceiptCaptureComplete = useCallback(
     async (base64String: string) => {
-      await printCodReceipt({ codReceiptBase64String: base64String.trim() });
+      const codReceiptBase64String = base64String.trim();
+      if (!codReceiptBase64String) {
+        invoiceProcessModeRef.current = 'CREATE';
+        setShowPrintReceipt(false);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await printCodReceipt({ codReceiptBase64String });
+      } catch {
+        // Mutation đã show lỗi và chạy onSettled cleanup; consume mutateAsync
+        // rejection vì CODReceipt gọi callback theo contract void.
+      }
     },
     [printCodReceipt],
   );
@@ -577,7 +721,7 @@ const OrderScanToDelivery = () => {
           </View>
         </ScrollView>
       </View>
-      {actionType && (
+      {(actionType || isPickupInvoiceOnly || isShipperInvoiceReprint) && (
         <View className="border-t border-gray-200 pb-4">
           <View className="px-4 py-3 bg-white ">{renderAction}</View>
         </View>
