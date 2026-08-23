@@ -1,4 +1,4 @@
-import { Formik } from 'formik';
+import { Formik, useFormikContext } from 'formik';
 import { isEmpty, isNumber, toLower } from 'lodash';
 import moment from 'moment-timezone';
 import React, {
@@ -109,6 +109,7 @@ const BOTTOM_SHEET_SECTION_GAP = 16;
 const BOTTOM_SHEET_REASON_SECTION = 72;
 const BOTTOM_SHEET_IMAGE_SECTION = 120;
 const BOTTOM_SHEET_CONFIRM_BUTTON = 48;
+const EMPTY_WEIGHT_RANGE_ITEM_KGS: number[] = [];
 
 const QUICK_ACTION_TO_ERROR_TYPE: Partial<
   Record<
@@ -130,7 +131,7 @@ function computeInputAmountBottomSheetHeight({
   windowHeight,
   safeAreaTop,
   guidelinesCount = 0,
-  isUnitBox = false,
+  shouldShowBoxInput = false,
   isWeightRange = false,
   hasConversionBadge = false,
   hasPackWarning = false,
@@ -139,7 +140,7 @@ function computeInputAmountBottomSheetHeight({
   windowHeight: number;
   safeAreaTop: number;
   guidelinesCount?: number;
-  isUnitBox?: boolean;
+  shouldShowBoxInput?: boolean;
   isWeightRange?: boolean;
   hasConversionBadge?: boolean;
   hasPackWarning?: boolean;
@@ -165,7 +166,9 @@ function computeInputAmountBottomSheetHeight({
     // WeightRange dùng list thay cho QuantitySection thông thường
     (isWeightRange ? 0 : BOTTOM_SHEET_QUANTITY_SECTION) +
     (isWeightRange ? BOTTOM_SHEET_WEIGHT_RANGE_SECTION : 0) +
-    (isUnitBox ? BOTTOM_SHEET_SECTION_GAP + BOTTOM_SHEET_BOX_SECTION : 0) +
+    (shouldShowBoxInput
+      ? BOTTOM_SHEET_SECTION_GAP + BOTTOM_SHEET_BOX_SECTION
+      : 0) +
     BOTTOM_SHEET_SECTION_GAP +
     BOTTOM_SHEET_REASON_SECTION +
     (hasImageSection
@@ -203,6 +206,7 @@ const DecrementButton = memo(
     </TouchableOpacity>
   ),
 );
+DecrementButton.displayName = 'DecrementButton';
 
 const IncrementButton = memo(
   ({ onPress, disabled }: { onPress: () => void; disabled: boolean }) => (
@@ -224,6 +228,7 @@ const IncrementButton = memo(
     </TouchableOpacity>
   ),
 );
+IncrementButton.displayName = 'IncrementButton';
 
 // QuantitySection Component
 const QuantitySection = memo(
@@ -257,7 +262,7 @@ const QuantitySection = memo(
       if (Number(values?.pickedQuantity) >= Number(quantityInit) && !action) {
         setFieldValue('pickedErrorType', null);
       }
-    }, [values?.pickedQuantity, quantityInit, setFieldValue, editable, action]);
+    }, [values?.pickedQuantity, quantityInit, setFieldValue, action]);
 
     const handleIncrement = useCallback(() => {
       if (!editable) return;
@@ -285,14 +290,13 @@ const QuantitySection = memo(
       values?.pickedQuantity,
       toggleScanQrCodeProduct,
       setQuantityFromBarcode,
-      setScanMoreProduct,
     ]);
 
     useEffect(() => {
       return () => {
         setScanMoreProduct(false);
       };
-    }, [setScanMoreProduct]);
+    }, []);
 
     const handleChangeText = useCallback(
       (value: string) => {
@@ -302,7 +306,7 @@ const QuantitySection = memo(
           setFieldValue('pickedErrorType', null);
         }
       },
-      [quantityInit, setFieldValue],
+      [quantityInit, setFieldValue, setQuantityFromBarcode],
     );
 
     const errorMessage = useMemo(() => {
@@ -355,6 +359,7 @@ const QuantitySection = memo(
     );
   },
 );
+QuantitySection.displayName = 'QuantitySection';
 
 // ReasonDropdown Component
 const ReasonDropdown = memo(
@@ -505,10 +510,11 @@ const ReasonDropdown = memo(
     );
   },
 );
+ReasonDropdown.displayName = 'ReasonDropdown';
 
 // Pack input
 const BoxInput = memo(
-  ({ values, setFieldValue, handleBlur, onInputFocus }: any) => {
+  ({ values, setFieldValue, handleBlur, onInputFocus, unit }: any) => {
     const handleChangeText = useCallback(
       (name: string, value: string) => {
         setFieldValue(name, parseInt(value || '0'));
@@ -548,7 +554,13 @@ const BoxInput = memo(
           <Input
             label={
               <Text className="font-medium text-gray-500" numberOfLines={1}>
-                Thùng nguyên kiện
+                {unit ? (
+                  <>
+                    <UnitText unit={unit} /> nguyên kiện
+                  </>
+                ) : (
+                  'Nguyên kiện'
+                )}
               </Text>
             }
             placeholder="Nhập số lượng"
@@ -581,7 +593,13 @@ const BoxInput = memo(
           <Input
             label={
               <Text className="font-medium text-gray-500" numberOfLines={1}>
-                Thùng gom lẻ
+                {unit ? (
+                  <>
+                    <UnitText unit={unit} /> gom lẻ
+                  </>
+                ) : (
+                  'Gom lẻ'
+                )}
               </Text>
             }
             placeholder="Nhập số lượng"
@@ -614,6 +632,7 @@ const BoxInput = memo(
     );
   },
 );
+BoxInput.displayName = 'BoxInput';
 
 // FormContent Component
 const FormContent = memo(
@@ -628,27 +647,28 @@ const FormContent = memo(
     action,
     quantityInit,
     quantityFromBarcode,
-    shoudShowBoxInput,
+    shouldShowBoxInput,
     shouldShowWeightRangeInput,
     onInputFocus,
     onImageUploadingChange,
   }: any) => {
+    const currentProductId = currentProduct?.id;
+    const fullBoxQuantity =
+      (currentProduct as Product)?.pickedExtraQuantities?.fullBoxQuantity || 0;
+    const openedBoxQuantity =
+      (currentProduct as Product)?.pickedExtraQuantities?.openedBoxQuantity ||
+      0;
+
     // Init số lượng + hộp thùng khi đổi sản phẩm
     useEffect(() => {
       if (shouldShowWeightRangeInput) return;
       setFieldValue('pickedQuantity', quantityFromBarcode || quantity);
-      setFieldValue(
-        'fullBoxQuantity',
-        (currentProduct as Product)?.pickedExtraQuantities?.fullBoxQuantity ||
-          0,
-      );
-      setFieldValue(
-        'openedBoxQuantity',
-        (currentProduct as Product)?.pickedExtraQuantities?.openedBoxQuantity ||
-          0,
-      );
+      setFieldValue('fullBoxQuantity', fullBoxQuantity);
+      setFieldValue('openedBoxQuantity', openedBoxQuantity);
     }, [
-      currentProduct?.id,
+      currentProductId,
+      fullBoxQuantity,
+      openedBoxQuantity,
       quantityFromBarcode,
       quantity,
       setFieldValue,
@@ -680,12 +700,13 @@ const FormContent = memo(
             }
           />
         )}
-        {shoudShowBoxInput && (
+        {shouldShowBoxInput && (
           <BoxInput
             values={values}
             setFieldValue={setFieldValue}
             handleBlur={handleBlur}
             onInputFocus={onInputFocus}
+            unit={currentProduct?.unit}
           />
         )}
         <ReasonDropdown
@@ -719,6 +740,189 @@ const FormContent = memo(
     );
   },
 );
+FormContent.displayName = 'FormContent';
+
+const FormikPopupContent = ({
+  action,
+  bottomSheetHeightBase,
+  bottomSheetHeightWithImage,
+  currentProduct,
+  displayPickedQuantity,
+  handleInputFocus,
+  handleSheetClose,
+  inputBottomSheetRef,
+  isImageUploading,
+  isKeyboardVisible,
+  isSetOrderTemToPickedPending,
+  isShowAmountInput,
+  isWeightRange,
+  orderQuantity,
+  productPickedErrorTypes,
+  quantityFromBarcode,
+  renderTitle,
+  renderTopHeader,
+  setIsImageUploading,
+  shouldShowBoxInput,
+  weightRangePendingScanKGs,
+}: any) => {
+  const { values, handleBlur, setFieldValue, handleSubmit, setErrors } =
+    useFormikContext<any>();
+  const currentProductId = (currentProduct as Product)?.id;
+  const weightRangeItemKGs =
+    values?.weightRangeItemKGs ?? EMPTY_WEIGHT_RANGE_ITEM_KGS;
+  const pickedErrorType = values?.pickedErrorType;
+  const pickedQuantity = values?.pickedQuantity;
+  const isOutOfStockAction = action === PRODUCT_ACTIONS.OUT_OF_STOCK;
+  const quickActionErrorType = action
+    ? QUICK_ACTION_TO_ERROR_TYPE[action as ProductAction]
+    : undefined;
+  // Effect khởi tạo quick action chỉ chạy theo action/lifecycle như logic cũ.
+  // Ref giữ giá trị Formik mới nhất mà không biến việc user đổi/xóa lý do thành trigger.
+  const pickedErrorTypeRef = useRef(pickedErrorType);
+  pickedErrorTypeRef.current = pickedErrorType;
+
+  const isError = isWeightRange
+    ? weightRangeItemKGs.length === 0 && !pickedErrorType
+    : Number(pickedQuantity) < Number(orderQuantity) && !pickedErrorType;
+
+  const needsPickedImage = isPickedErrorTypeRequiringImage(pickedErrorType);
+  const isMissingRequiredImage =
+    REQUIRE_PICKED_IMAGE_FOR_ERROR_TYPES &&
+    needsPickedImage &&
+    !values?.pickedImage;
+
+  useEffect(() => {
+    if (!needsPickedImage) {
+      setIsImageUploading(false);
+    }
+  }, [needsPickedImage, setIsImageUploading]);
+
+  const bottomSheetHeight = needsPickedImage
+    ? bottomSheetHeightWithImage
+    : bottomSheetHeightBase;
+
+  const weightRangeItemsRef = useRef<number[]>([]);
+  weightRangeItemsRef.current = weightRangeItemKGs;
+
+  // Drain pending KG từ scan → form (chạy ở Formik, không phụ thuộc WeightRangeLineItems mount)
+  useLayoutEffect(() => {
+    if (!isShowAmountInput || !isWeightRange) return;
+    if (weightRangePendingScanKGs.length === 0) return;
+
+    const pending = drainWeightRangePendingScanKGs();
+    if (pending.length === 0) return;
+
+    const merged = [...weightRangeItemsRef.current, ...pending];
+    setFieldValue('weightRangeItemKGs', merged);
+    // Cập nhật draft ngay trong cùng layout-effect (sau khi đã drain queue)
+    // để không có cửa sổ mất item nếu remount xảy ra trước passive effect.
+    if (currentProductId != null) {
+      setWeightRangeDraft({ id: currentProductId, items: merged });
+    }
+  }, [
+    currentProductId,
+    isShowAmountInput,
+    isWeightRange,
+    setFieldValue,
+    weightRangePendingScanKGs,
+  ]);
+
+  // Mirror danh sách KG hiện tại → store draft (gắn product id) để remount
+  // giữa chừng có thể khôi phục, tránh mất item đã quét → submit rỗng.
+  useEffect(() => {
+    if (!isShowAmountInput || !isWeightRange) return;
+    if (currentProductId == null) return;
+    setWeightRangeDraft({
+      id: currentProductId,
+      items: weightRangeItemKGs,
+    });
+  }, [currentProductId, isShowAmountInput, isWeightRange, weightRangeItemKGs]);
+
+  useEffect(() => {
+    if (!isShowAmountInput) return;
+
+    if (isOutOfStockAction) {
+      if (!isWeightRange) {
+        setFieldValue('pickedQuantity', 0);
+        setFieldValue(
+          'pickedErrorType',
+          PRODUCT_PICKED_ERROR_TYPES.OUT_OF_STOCK,
+        );
+      } else if (!pickedErrorTypeRef.current) {
+        // WeightRange: chỉ set mặc định lần đầu mở popup
+        setFieldValue(
+          'pickedErrorType',
+          PRODUCT_PICKED_ERROR_TYPES.OUT_OF_STOCK,
+        );
+      }
+      return;
+    }
+
+    if (quickActionErrorType) {
+      setFieldValue('pickedErrorType', quickActionErrorType);
+    }
+  }, [
+    isOutOfStockAction,
+    isShowAmountInput,
+    isWeightRange,
+    quickActionErrorType,
+    setFieldValue,
+  ]);
+
+  useEffect(() => {
+    if (!isShowAmountInput || isWeightRange) return;
+    if (isOutOfStockAction) return;
+
+    setFieldValue('pickedQuantity', displayPickedQuantity.toString());
+  }, [
+    displayPickedQuantity,
+    isOutOfStockAction,
+    isShowAmountInput,
+    isWeightRange,
+    setFieldValue,
+  ]);
+
+  return (
+    <SBottomSheet
+      topHeader={renderTopHeader}
+      renderTitle={renderTitle}
+      ref={inputBottomSheetRef}
+      snapPoints={[bottomSheetHeight]}
+      onClose={handleSheetClose}
+      visible={isShowAmountInput}
+      enablePanDownToClose={!isWeightRange}
+      enableHandlePanningGesture={!isWeightRange}
+      enableContentPanningGesture={!isWeightRange}
+      extraButton={
+        isKeyboardVisible ? undefined : (
+          <Button
+            onPress={() => handleSubmit()}
+            label="Xác nhận"
+            disabled={isError || isMissingRequiredImage || isImageUploading}
+            loading={isSetOrderTemToPickedPending}
+          />
+        )
+      }
+    >
+      <FormContent
+        values={values}
+        handleBlur={handleBlur}
+        setFieldValue={setFieldValue}
+        setErrors={setErrors}
+        currentProduct={currentProduct}
+        quantityInit={currentProduct?.orderQuantity}
+        quantity={displayPickedQuantity}
+        action={action}
+        productPickedErrorTypes={productPickedErrorTypes}
+        quantityFromBarcode={quantityFromBarcode}
+        shouldShowBoxInput={shouldShowBoxInput}
+        shouldShowWeightRangeInput={isWeightRange}
+        onInputFocus={handleInputFocus}
+        onImageUploadingChange={setIsImageUploading}
+      />
+    </SBottomSheet>
+  );
+};
 
 // Main Component
 const InputAmountPopup = () => {
@@ -848,6 +1052,7 @@ const InputAmountPopup = () => {
   }, [currentProduct?.unit]);
 
   const isWeightRange = isWeightRangeProduct(currentProduct);
+  const weightRangeOrderQuantity = getWeightRangeOrderQuantity(currentProduct);
 
   // Memoize title component
   const renderTitle = useMemo(
@@ -873,7 +1078,7 @@ const InputAmountPopup = () => {
                 {'SL đặt: '}
                 {isWeightRange && currentProduct?.orderQuantityConversion ? (
                   <>
-                    {`${getWeightRangeOrderQuantity(currentProduct)} x `}
+                    {`${weightRangeOrderQuantity} x `}
                     <UnitText
                       unit={currentProduct.orderQuantityConversion.unit}
                       orderQuantityConversion
@@ -916,6 +1121,7 @@ const InputAmountPopup = () => {
       currentProduct?.productPickingGuidelines,
       packOrBoxUnitWarning,
       isWeightRange,
+      weightRangeOrderQuantity,
     ],
   );
 
@@ -981,7 +1187,8 @@ const InputAmountPopup = () => {
     }
   }, [isShowAmountInput]);
 
-  const isUnitBox = currentProduct?.unit?.toLowerCase()?.startsWith('thùng');
+  const shouldShowBoxInput =
+    currentProduct?.isRequirePickedFullBoxAndOpenedBoxQuantity === true;
   const weightRangePendingScanKGs =
     useOrderPick.use.weightRangePendingScanKGs();
   const isScanQrCodeProduct = useOrderPick.use.isScanQrCodeProduct();
@@ -1000,7 +1207,7 @@ const InputAmountPopup = () => {
         windowHeight,
         safeAreaTop: insets.top,
         guidelinesCount: currentProduct?.productPickingGuidelines?.length ?? 0,
-        isUnitBox,
+        shouldShowBoxInput,
         isWeightRange,
         hasConversionBadge,
         hasPackWarning,
@@ -1010,7 +1217,7 @@ const InputAmountPopup = () => {
       windowHeight,
       insets.top,
       currentProduct?.productPickingGuidelines,
-      isUnitBox,
+      shouldShowBoxInput,
       isWeightRange,
       hasConversionBadge,
       hasPackWarning,
@@ -1023,7 +1230,7 @@ const InputAmountPopup = () => {
         windowHeight,
         safeAreaTop: insets.top,
         guidelinesCount: currentProduct?.productPickingGuidelines?.length ?? 0,
-        isUnitBox,
+        shouldShowBoxInput,
         isWeightRange,
         hasConversionBadge,
         hasPackWarning,
@@ -1033,7 +1240,7 @@ const InputAmountPopup = () => {
       windowHeight,
       insets.top,
       currentProduct?.productPickingGuidelines,
-      isUnitBox,
+      shouldShowBoxInput,
       isWeightRange,
       hasConversionBadge,
       hasPackWarning,
@@ -1054,12 +1261,7 @@ const InputAmountPopup = () => {
     clearWeightRangePendingScanKGs();
     setWeightRangeDraft(null);
     setActionProduct(null);
-  }, [
-    toggleShowAmountInput,
-    setCurrentId,
-    setQuantityFromBarcode,
-    setActionProduct,
-  ]);
+  }, []);
 
   const handleSheetClose = useCallback(() => {
     if (isScanQrCodeProduct) return;
@@ -1140,9 +1342,9 @@ const InputAmountPopup = () => {
         ...(values?.pickedImage ? { pickedImage: values.pickedImage } : {}),
         pickedTime: moment().valueOf(),
         isAllowEditPickQuantity: true,
-        ...((isUnitBox || isWeightRange) && {
+        ...((shouldShowBoxInput || isWeightRange) && {
           pickedExtraQuantities: {
-            ...(isUnitBox && {
+            ...(shouldShowBoxInput && {
               fullBoxQuantity: values?.fullBoxQuantity || 0,
               openedBoxQuantity: values?.openedBoxQuantity || 0,
             }),
@@ -1166,7 +1368,7 @@ const InputAmountPopup = () => {
       isPickedByManualBarcodeInput,
       orderQuantity,
       code,
-      isUnitBox,
+      shouldShowBoxInput,
       isWeightRange,
       setOrderTemToPicked,
       queryClient,
@@ -1174,44 +1376,50 @@ const InputAmountPopup = () => {
   );
 
   // Memoize initial values
+  const initialProductId = currentProduct?.id;
+  const initialPickedErrorType = currentProduct?.pickedErrorType;
+  const initialPickedNote = currentProduct?.pickedNote;
+  const initialPickedImage = currentProduct?.pickedImage;
+  const initialPickedExtraQuantities = currentProduct?.pickedExtraQuantities;
+  // WeightRange không reinit theo displayPickedQuantity (drain queue lo việc đó).
+  const initialDisplayPickedQuantity = isWeightRange
+    ? 0
+    : displayPickedQuantity;
   const initialValues = useMemo(() => {
     // Ưu tiên bản nháp đang thao tác (mirror trong store) để KHÔNG mất item đã
     // quét khi Formik remount giữa chừng. draft gắn theo product id để không lẫn
     // sản phẩm; null = mở phiên mới → seed từ dữ liệu đã lưu.
     const draft = getWeightRangeDraft();
     const weightRangeItemKGs = isWeightRange
-      ? draft && draft.id === (currentProduct as Product)?.id
+      ? draft && draft.id === initialProductId
         ? draft.items
         : parseWeightRangeItemKGs(
-            (currentProduct as Product)?.pickedExtraQuantities
-              ?.weightRangeItemKGs,
+            initialPickedExtraQuantities?.weightRangeItemKGs,
           )
       : [];
 
     return {
       pickedQuantity: isWeightRange
         ? sumWeightRangeItemKGs(weightRangeItemKGs)
-        : displayPickedQuantity,
-      pickedErrorType: (currentProduct as Product)?.pickedErrorType || '',
-      pickedNote: (currentProduct as Product)?.pickedNote || '',
-      pickedImage: (currentProduct as Product)?.pickedImage || '',
-      ...(isUnitBox && {
-        fullBoxQuantity:
-          (currentProduct as Product)?.pickedExtraQuantities?.fullBoxQuantity ||
-          0,
-        openedBoxQuantity:
-          (currentProduct as Product)?.pickedExtraQuantities
-            ?.openedBoxQuantity || 0,
+        : initialDisplayPickedQuantity,
+      pickedErrorType: initialPickedErrorType || '',
+      pickedNote: initialPickedNote || '',
+      pickedImage: initialPickedImage || '',
+      ...(shouldShowBoxInput && {
+        fullBoxQuantity: initialPickedExtraQuantities?.fullBoxQuantity || 0,
+        openedBoxQuantity: initialPickedExtraQuantities?.openedBoxQuantity || 0,
       }),
       ...(isWeightRange && { weightRangeItemKGs }),
     };
   }, [
-    currentProduct?.id,
-    isUnitBox,
+    initialDisplayPickedQuantity,
+    initialPickedErrorType,
+    initialPickedExtraQuantities,
+    initialPickedImage,
+    initialPickedNote,
+    initialProductId,
     isWeightRange,
-    // WeightRange không reinit theo displayPickedQuantity (drain queue lo việc đó).
-    // Giữ kích thước deps cố định để tránh lỗi "deps array changed size".
-    isWeightRange ? 0 : displayPickedQuantity,
+    shouldShowBoxInput,
   ]);
 
   const formikKey = isWeightRange
@@ -1226,159 +1434,29 @@ const InputAmountPopup = () => {
       onSubmit={onSubmit}
       enableReinitialize={!isWeightRange}
     >
-      {({ values, handleBlur, setFieldValue, handleSubmit, setErrors }) => {
-        const isError = isWeightRange
-          ? (values?.weightRangeItemKGs?.length ?? 0) === 0 &&
-            !values?.pickedErrorType
-          : Number(values?.pickedQuantity) < Number(orderQuantity) &&
-            !values?.pickedErrorType;
-
-        const needsPickedImage = isPickedErrorTypeRequiringImage(
-          values?.pickedErrorType,
-        );
-        const isMissingRequiredImage =
-          REQUIRE_PICKED_IMAGE_FOR_ERROR_TYPES &&
-          needsPickedImage &&
-          !values?.pickedImage;
-
-        useEffect(() => {
-          if (!needsPickedImage) {
-            setIsImageUploading(false);
-          }
-        }, [needsPickedImage]);
-
-        const bottomSheetHeight = needsPickedImage
-          ? bottomSheetHeightWithImage
-          : bottomSheetHeightBase;
-
-        const weightRangeItemsRef = useRef<number[]>([]);
-        weightRangeItemsRef.current = values?.weightRangeItemKGs ?? [];
-
-        // Drain pending KG từ scan → form (chạy ở Formik, không phụ thuộc WeightRangeLineItems mount)
-        useLayoutEffect(() => {
-          if (!isShowAmountInput || !isWeightRange) return;
-          if (weightRangePendingScanKGs.length === 0) return;
-
-          const pending = drainWeightRangePendingScanKGs();
-          if (pending.length === 0) return;
-
-          const merged = [...weightRangeItemsRef.current, ...pending];
-          setFieldValue('weightRangeItemKGs', merged);
-          // Cập nhật draft ngay trong cùng layout-effect (sau khi đã drain queue)
-          // để không có cửa sổ mất item nếu remount xảy ra trước passive effect.
-          const id = (currentProduct as Product)?.id;
-          if (id != null) {
-            setWeightRangeDraft({ id, items: merged });
-          }
-        }, [
-          isShowAmountInput,
-          isWeightRange,
-          weightRangePendingScanKGs,
-          currentProduct,
-          setFieldValue,
-        ]);
-
-        // Mirror danh sách KG hiện tại → store draft (gắn product id) để remount
-        // giữa chừng có thể khôi phục, tránh mất item đã quét → submit rỗng.
-        useEffect(() => {
-          if (!isShowAmountInput || !isWeightRange) return;
-          const id = (currentProduct as Product)?.id;
-          if (id == null) return;
-          setWeightRangeDraft({
-            id,
-            items: values?.weightRangeItemKGs ?? [],
-          });
-        }, [
-          isShowAmountInput,
-          isWeightRange,
-          currentProduct,
-          values?.weightRangeItemKGs,
-        ]);
-
-        useEffect(() => {
-          if (!isShowAmountInput) return;
-
-          if (action === PRODUCT_ACTIONS.OUT_OF_STOCK) {
-            if (!isWeightRange) {
-              setFieldValue('pickedQuantity', 0);
-              setFieldValue(
-                'pickedErrorType',
-                PRODUCT_PICKED_ERROR_TYPES.OUT_OF_STOCK,
-              );
-            } else if (!values?.pickedErrorType) {
-              // WeightRange: chỉ set mặc định lần đầu mở popup
-              setFieldValue(
-                'pickedErrorType',
-                PRODUCT_PICKED_ERROR_TYPES.OUT_OF_STOCK,
-              );
-            }
-            return;
-          }
-
-          if (action && QUICK_ACTION_TO_ERROR_TYPE[action]) {
-            setFieldValue(
-              'pickedErrorType',
-              QUICK_ACTION_TO_ERROR_TYPE[action],
-            );
-          }
-        }, [action, isShowAmountInput, isWeightRange, setFieldValue]);
-
-        useEffect(() => {
-          if (!isShowAmountInput || isWeightRange) return;
-          if (action === PRODUCT_ACTIONS.OUT_OF_STOCK) return;
-
-          setFieldValue('pickedQuantity', displayPickedQuantity.toString());
-        }, [
-          isShowAmountInput,
-          displayPickedQuantity,
-          isWeightRange,
-          action,
-          setFieldValue,
-        ]);
-
-        return (
-          <SBottomSheet
-            topHeader={renderTopHeader}
-            renderTitle={renderTitle}
-            ref={inputBottomSheetRef}
-            snapPoints={[bottomSheetHeight]}
-            onClose={handleSheetClose}
-            visible={isShowAmountInput}
-            enablePanDownToClose={!isWeightRange}
-            enableHandlePanningGesture={!isWeightRange}
-            enableContentPanningGesture={!isWeightRange}
-            extraButton={
-              isKeyboardVisible ? undefined : (
-                <Button
-                  onPress={() => handleSubmit()}
-                  label="Xác nhận"
-                  disabled={
-                    isError || isMissingRequiredImage || isImageUploading
-                  }
-                  loading={isSetOrderTemToPickedPending}
-                />
-              )
-            }
-          >
-            <FormContent
-              values={values}
-              handleBlur={handleBlur}
-              setFieldValue={setFieldValue}
-              setErrors={setErrors}
-              currentProduct={currentProduct}
-              quantityInit={currentProduct?.orderQuantity}
-              quantity={displayPickedQuantity}
-              action={action}
-              productPickedErrorTypes={productPickedErrorTypes}
-              quantityFromBarcode={quantityFromBarcode}
-              shoudShowBoxInput={isUnitBox}
-              shouldShowWeightRangeInput={isWeightRange}
-              onInputFocus={handleInputFocus}
-              onImageUploadingChange={setIsImageUploading}
-            />
-          </SBottomSheet>
-        );
-      }}
+      <FormikPopupContent
+        action={action}
+        bottomSheetHeightBase={bottomSheetHeightBase}
+        bottomSheetHeightWithImage={bottomSheetHeightWithImage}
+        currentProduct={currentProduct}
+        displayPickedQuantity={displayPickedQuantity}
+        handleInputFocus={handleInputFocus}
+        handleSheetClose={handleSheetClose}
+        inputBottomSheetRef={inputBottomSheetRef}
+        isImageUploading={isImageUploading}
+        isKeyboardVisible={isKeyboardVisible}
+        isSetOrderTemToPickedPending={isSetOrderTemToPickedPending}
+        isShowAmountInput={isShowAmountInput}
+        isWeightRange={isWeightRange}
+        orderQuantity={orderQuantity}
+        productPickedErrorTypes={productPickedErrorTypes}
+        quantityFromBarcode={quantityFromBarcode}
+        renderTitle={renderTitle}
+        renderTopHeader={renderTopHeader}
+        setIsImageUploading={setIsImageUploading}
+        shouldShowBoxInput={shouldShowBoxInput}
+        weightRangePendingScanKGs={weightRangePendingScanKGs}
+      />
     </Formik>
   );
 };

@@ -1,5 +1,5 @@
 export const ORDER_COUNTER_STATUS: any = {
-  ALL: 'Tất cả',
+  ALL: 'Đang xử lý',
   NEW: 'Mới',
   ASSIGNED: 'Đã phân công',
   CONFIRMED: 'Đã xác nhận',
@@ -19,12 +19,12 @@ export const ORDER_COUNTER_STATUS_DRIVER: any = {
 };
 
 export const ORDER_COUNTER_STATUS_PRIORITY: any = {
-  ALL: 1,
-  CONFIRMED: 2,
-  STORE_PICKING: 3,
-  STORE_PACKED: 4,
-  BOOKED_SHIPPER: 5,
-  SHIPPING: 6,
+  CONFIRMED: 1,
+  STORE_PICKING: 2,
+  STORE_PACKED: 3,
+  BOOKED_SHIPPER: 4,
+  SHIPPING: 5,
+  ALL: 6,
   COMPLETED: 7,
   CANCELLED: 8,
 };

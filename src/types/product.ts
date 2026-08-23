@@ -53,6 +53,8 @@ export type Product = {
   orderQuantity: number;
   refBarcodes?: Array<string>;
   unit?: string;
+  /** Backend rule: yêu cầu nhập riêng số kiện nguyên và kiện gom lẻ khi pick. */
+  isRequirePickedFullBoxAndOpenedBoxQuantity?: boolean;
   gifts?: Array<{ name: string; image: string }>;
   extraConversionQuantity?: number;
   categoryType?: string;

@@ -93,12 +93,6 @@ export default function Login() {
                 source={'logo'}
                 style={{ width: 208, height: 42 }}
               />
-              <Text className="text-xl font-semibold text-gray-700 mt-5">
-                Chào mừng bạn trở lại
-              </Text>
-              <Text className="text-sm text-gray-500 mt-2 text-center">
-                Đăng nhập để tiếp tục sử dụng Seedcom
-              </Text>
             </View>
 
             <View className="w-full" style={{ gap: 18 }}>
