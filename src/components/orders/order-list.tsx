@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   FlatList,
   Keyboard,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -88,21 +89,30 @@ const ErrorMessage = ({ error }: { error: string }) => (
   </View>
 );
 
-const EmptyComponent = ({ isFetching }: { isFetching: boolean }) => {
-  if (!isFetching) {
+const EmptyComponent = ({
+  isFirstTabLoading,
+}: {
+  isFirstTabLoading: boolean;
+}) => {
+  if (isFirstTabLoading) {
     return (
-      <View className="mx-4 mt-3">
-        <Empty />
+      <View className="flex-1 px-4">
+        <OrderListSkeleton />
       </View>
     );
   }
-  return null;
+
+  return (
+    <View className="mx-4 mt-3">
+      <Empty />
+    </View>
+  );
 };
 
 const OrderList = () => {
   // References
   const flatListRef = useRef<FlatList>(null);
-  const isInitialRender = useRef(true);
+  const hasFocusedOnceRef = useRef(false);
   const isManualRefreshRef = useRef(false);
   const prevParamsRef = useRef<any>(null);
 
@@ -167,23 +177,6 @@ const OrderList = () => {
     };
   }, [selectedOrderCounter, deliveryType, fromScanQrCode]);
 
-  // Check if params have changed
-  const haveParamsChanged = useCallback(() => {
-    if (!prevParamsRef.current) return true;
-
-    // Only compare relevant fields for reload
-    const prevParams = prevParamsRef.current;
-    return (
-      prevParams.status !== params?.status ||
-      prevParams.deliveryType !== params?.deliveryType
-    );
-  }, [params]);
-
-  // Update prevParams ref
-  useEffect(() => {
-    prevParamsRef.current = params;
-  }, [params]);
-
   // Data query - Only run when storeCode exists
   const {
     data: ordersResponse,
@@ -192,10 +185,11 @@ const OrderList = () => {
     isFetchingNextPage,
     hasNextPage,
     refetch,
-    hasPreviousPage,
     isSuccess,
     isPending,
   } = useSearchOrders(params);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
 
   const orderList = useMemo(
     () => ordersResponse?.pages || [],
@@ -203,8 +197,7 @@ const OrderList = () => {
   );
   const hasItems = orderList.length > 0;
   const hasError = !!(ordersResponse as any)?.error;
-  const isLoading =
-    !hasPreviousPage && isPending && !isManualRefreshRef.current;
+  const isFirstTabLoading = isPending && !isManualRefreshRef.current;
 
   // Reset scan QR flag after successful fetch
   useEffect(() => {
@@ -214,29 +207,43 @@ const OrderList = () => {
   }, [isSuccess, fromScanQrCode]);
 
   // First page reset function - memoized
-  const goFirstPage = useCallback(async () => {
-    await queryClient.resetQueries({ queryKey: ['searchOrders', params] });
-    return refetch();
-  }, [params, refetch]);
+  const goFirstPage = useCallback(
+    () =>
+      queryClient.resetQueries({
+        queryKey: ['searchOrders', params],
+        exact: true,
+      }),
+    [params],
+  );
 
-  // Reset page on filter changes
+  // Query key đổi sẽ tự fetch. Chỉ refetch thủ công khi quay lại cache còn fresh.
   useEffect(() => {
-    if (!isInitialRender.current && haveParamsChanged()) {
-      isManualRefreshRef.current = false;
-      goFirstPage();
-    } else {
-      isInitialRender.current = false;
+    const previousParams = prevParamsRef.current;
+    const paramsChanged =
+      previousParams != null &&
+      (previousParams.status !== params.status ||
+        previousParams.deliveryType !== params.deliveryType);
+
+    prevParamsRef.current = params;
+
+    if (!paramsChanged) return;
+
+    isManualRefreshRef.current = false;
+    if (!isFetching) {
+      void refetch();
     }
-  }, [selectedOrderCounter, deliveryType, goFirstPage, haveParamsChanged]);
+  }, [params, isFetching, refetch]);
 
   // Refresh on screen focus
   useFocusEffect(
     useCallback(() => {
-      if (!isInitialRender.current) {
-        refetch();
+      if (hasFocusedOnceRef.current) {
+        void refetchRef.current();
+      } else {
+        hasFocusedOnceRef.current = true;
       }
       return () => {};
-    }, [refetch]),
+    }, []),
   );
 
   // Pull-to-refresh handler
@@ -293,33 +300,11 @@ const OrderList = () => {
     Keyboard.dismiss();
   }, []);
 
-  // Conditional rendering based on state
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-white">
-        <Header />
-        <View className="px-4">
-          <OrderListSkeleton />
-        </View>
-      </View>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <View className="flex-1 bg-white">
-        <Header />
-        <View className="px-4">
-          <ErrorMessage error={(ordersResponse as any)?.error} />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View className="mb-4 flex-grow bg-white">
       <PullToRefreshFlatList
         className="flex-1"
+        contentContainerStyle={!hasItems ? styles.emptyContent : undefined}
         keyboardDismissMode="on-drag"
         onScrollBeginDrag={dismissKeyboardOnScroll}
         showsVerticalScrollIndicator={false}
@@ -329,7 +314,13 @@ const OrderList = () => {
         onRefresh={handleRefresh}
         ListHeaderComponent={Header}
         stickyHeaderIndices={[0]}
-        ListEmptyComponent={<EmptyComponent isFetching={isFetching} />}
+        ListEmptyComponent={
+          hasError ? (
+            <ErrorMessage error={(ordersResponse as any)?.error} />
+          ) : (
+            <EmptyComponent isFirstTabLoading={isFirstTabLoading} />
+          )
+        }
         data={orderList}
         onEndReachedThreshold={0.3}
         onEndReached={handleEndReached}
@@ -354,3 +345,9 @@ const OrderList = () => {
 };
 
 export default memo(OrderList);
+
+const styles = StyleSheet.create({
+  emptyContent: {
+    flexGrow: 1,
+  },
+});

@@ -115,10 +115,19 @@ const Header = () => {
         query.state.data === undefined &&
         query.getObserversCount() > 0,
     }) > 0;
+  const initialSearchParamsRef = useRef(searchParams);
+  const isInitialOrderQuery =
+    initialSearchParamsRef.current.status === searchParams.status &&
+    initialSearchParamsRef.current.deliveryType === searchParams.deliveryType;
   const canShowInitialSkeletonRef = useRef(true);
   const hasSeenInitialLoadingRef = useRef(false);
 
   useEffect(() => {
+    if (!isInitialOrderQuery) {
+      canShowInitialSkeletonRef.current = false;
+      return;
+    }
+
     if (isLoadingOrderListInitial) {
       hasSeenInitialLoadingRef.current = true;
       return;
@@ -133,10 +142,12 @@ const Header = () => {
     ) {
       canShowInitialSkeletonRef.current = false;
     }
-  }, [isLoadingOrderListInitial]);
+  }, [isInitialOrderQuery, isLoadingOrderListInitial]);
 
   const shouldShowInitialSkeleton =
-    canShowInitialSkeletonRef.current && isLoadingOrderListInitial;
+    isInitialOrderQuery &&
+    canShowInitialSkeletonRef.current &&
+    isLoadingOrderListInitial;
 
   const navigation = useNavigation();
   const toggleMenu = () => navigation.dispatch(DrawerActions.toggleDrawer());
