@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { useCanEditOrderPick } from '~/src/core/hooks/useCanEditOrderPick';
 import {
@@ -49,6 +49,11 @@ const actions = [
     icon: <AntDesign name="tago" size={20} color="black" />,
   },
   {
+    key: PRODUCT_ACTIONS.PICK_WEIGHT_EXCEEDS_LIMIT,
+    title: PRODUCT_ACTION_LABELS[PRODUCT_ACTIONS.PICK_WEIGHT_EXCEEDS_LIMIT],
+    icon: <AntDesign name="tago" size={20} color="black" />,
+  },
+  {
     key: PRODUCT_ACTIONS.INCORRECT_STOCK,
     title: PRODUCT_ACTION_LABELS[PRODUCT_ACTIONS.INCORRECT_STOCK],
     icon: <AntDesign name="tago" size={20} color="black" />,
@@ -59,6 +64,11 @@ const actions = [
     icon: <AntDesign name="tago" size={20} color="black" />,
   },
 ];
+
+const FIXED_ACTION_COUNT = 2; // Sửa số lượng + Thay thế sản phẩm
+const ACTION_ROW_ESTIMATED_HEIGHT = 56;
+const ACTION_SHEET_HEADER_HEIGHT = 56;
+const ACTION_SHEET_MAX_HEIGHT_RATIO = 0.8;
 
 interface MoreActionsBtnProps {
   code: string;
@@ -77,8 +87,24 @@ const MoreActionsBtn = ({
   onEditPress,
   onReplaceProduct,
 }: MoreActionsBtnProps) => {
+  const { height: windowHeight } = useWindowDimensions();
   const [visible, setVisible] = useState(false);
   const actionRef = useRef<any>();
+
+  const actionSheetSnapPoints = useMemo(() => {
+    const contentHeight =
+      ACTION_SHEET_HEADER_HEIGHT +
+      (actions.length + FIXED_ACTION_COUNT) * ACTION_ROW_ESTIMATED_HEIGHT;
+
+    // Đủ cao theo số action trên màn lớn; giới hạn trên màn thấp để danh sách
+    // cuộn trong SafeBottomSheetScrollView thay vì tràn ra ngoài viewport.
+    return [
+      Math.min(
+        contentHeight,
+        Math.floor(windowHeight * ACTION_SHEET_MAX_HEIGHT_RATIO),
+      ),
+    ];
+  }, [windowHeight]);
 
   const orderPickProductsFlat = useOrderPickProductsFlat();
 
@@ -161,6 +187,9 @@ const MoreActionsBtn = ({
         case PRODUCT_ACTIONS.EXPIRED_ONLINE:
           setActionProduct(PRODUCT_ACTIONS.EXPIRED_ONLINE);
           break;
+        case PRODUCT_ACTIONS.PICK_WEIGHT_EXCEEDS_LIMIT:
+          setActionProduct(PRODUCT_ACTIONS.PICK_WEIGHT_EXCEEDS_LIMIT);
+          break;
         case PRODUCT_ACTIONS.INCORRECT_STOCK:
           setActionProduct(PRODUCT_ACTIONS.INCORRECT_STOCK);
           break;
@@ -191,7 +220,7 @@ const MoreActionsBtn = ({
           visible={visible}
           onClose={() => setVisible(false)}
           ref={actionRef}
-          snapPoints={[480]}
+          snapPoints={actionSheetSnapPoints}
         >
           {renderItem({
             key: 'edit-pick-quantity',
