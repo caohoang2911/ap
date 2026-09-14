@@ -1,10 +1,10 @@
 import { ORDER_DELIVERY_TYPE } from '@/core/constants/order';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router } from 'expo-router';
 import React, { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useDriverOrderActions } from '~/src/core/hooks/useDriverOrderActions';
+import { NavigationHelpers } from '~/src/core/utils/navigation';
 import {
   getScanToDeliveryInfo,
   isEnableScanToDelivery,
@@ -44,9 +44,6 @@ const OrderActionsBottomSheet = forwardRef<
     [deliveryType, status, orderCode],
   );
 
-  const { isDriver, handleOrderInfo, handlePickOrder, handleAssignOrder } =
-    useDriverOrderActions(orderCode);
-
   useImperativeHandle(ref, () => ({
     present: () => {
       bottomSheetRef.current?.present();
@@ -58,23 +55,18 @@ const OrderActionsBottomSheet = forwardRef<
 
   const handleOrderInfoWithClose = () => {
     onClose();
-    handleOrderInfo();
+    NavigationHelpers.toOrderInvoice(orderCode);
   };
 
   const handlePickOrderWithClose = () => {
     onClose();
-    handlePickOrder();
+    NavigationHelpers.toOrderPick(orderCode);
   };
 
   const handleScanBagDeliveryWithClose = () => {
     onClose();
     bottomSheetRef.current?.dismiss();
     router.push(scanToDeliveryInfo?.route as string);
-  };
-
-  const handleAssignOrderWithClose = () => {
-    onClose();
-    handleAssignOrder(orderCode);
   };
 
   const ActionItem = ({
@@ -122,7 +114,7 @@ const OrderActionsBottomSheet = forwardRef<
         ref={bottomSheetRef}
         visible={visible}
         onClose={onClose}
-        snapPoints={[isDriver ? 260 : 270]}
+        snapPoints={[270]}
         title="Thao tác"
         renderTitle={
           <View className="flex flex-row items-center">
@@ -133,66 +125,39 @@ const OrderActionsBottomSheet = forwardRef<
         titleAlign="left"
       >
         <View className="px-4">
-          {isDriver ? (
-            // Driver options
-            <>
-              <ActionItem
-                icon="file-text"
-                title="Thông tin đơn hàng"
-                onPress={handleOrderInfoWithClose}
-                enabled={true}
+          <ActionItem
+            icon={
+              <MaterialCommunityIcons
+                name="barcode-scan"
+                size={20}
+                color="black"
               />
-              <ActionItem
-                icon={
-                  <MaterialIcons
-                    name="person-add-alt"
-                    size={20}
-                    color="#374151"
-                  />
-                }
-                title="Gán đơn cho tài xế nội bộ"
-                onPress={handleAssignOrderWithClose}
-                enabled={true}
-              />
-            </>
-          ) : (
-            // Non-driver options
-            <>
-              <ActionItem
-                icon={
-                  <MaterialCommunityIcons
-                    name="barcode-scan"
-                    size={20}
-                    color="black"
-                  />
-                }
-                title="Pick đơn hàng"
-                onPress={handlePickOrderWithClose}
-                enabled={true}
-              />
-              <ActionItem
-                icon="file-text"
-                title="Thông tin đơn hàng"
-                onPress={handleOrderInfoWithClose}
-                enabled={true}
-              />
-              {!shouldHideScanToDelivery && (
-                <ActionItem
-                  icon="package"
-                  title={
-                    getScanToDeliveryInfo({
-                      deliveryType: deliveryType as ORDER_DELIVERY_TYPE,
-                      status: status as OrderStatus,
-                      orderCode,
-                    })?.title || ''
-                  }
-                  onPress={handleScanBagDeliveryWithClose}
-                  enabled={isEnableScanToDelivery({
-                    status: status as OrderStatus,
-                  })}
-                />
-              )}
-            </>
+            }
+            title="Pick đơn hàng"
+            onPress={handlePickOrderWithClose}
+            enabled={true}
+          />
+          <ActionItem
+            icon="file-text"
+            title="Thông tin đơn hàng"
+            onPress={handleOrderInfoWithClose}
+            enabled={true}
+          />
+          {!shouldHideScanToDelivery && (
+            <ActionItem
+              icon="package"
+              title={
+                getScanToDeliveryInfo({
+                  deliveryType: deliveryType as ORDER_DELIVERY_TYPE,
+                  status: status as OrderStatus,
+                  orderCode,
+                })?.title || ''
+              }
+              onPress={handleScanBagDeliveryWithClose}
+              enabled={isEnableScanToDelivery({
+                status: status as OrderStatus,
+              })}
+            />
           )}
         </View>
       </SBottomSheet>

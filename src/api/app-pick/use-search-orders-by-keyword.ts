@@ -1,7 +1,5 @@
 import { axiosClient } from '@/api/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useRole } from '~/src/core/hooks/useRole';
-import { Role } from '~/src/types/employee';
 
 type Response =
   | ({ error: string } & {
@@ -9,12 +7,8 @@ type Response =
     })
   | any;
 
-const searchOrdersByKeyword = async (
-  keyword?: string,
-  role?: Role,
-): Promise<Response> => {
-  const contextPath = role === Role.DRIVER ? 'app-pick-driver' : 'app-pick';
-  return await axiosClient.get(`${contextPath}/suggestOrdersByKeyword`, {
+const searchOrdersByKeyword = async (keyword?: string): Promise<Response> => {
+  return await axiosClient.get('app-pick/suggestOrdersByKeyword', {
     params: { keyword },
   });
 };
@@ -24,10 +18,9 @@ export const useSearchOrdersByKeyword = (
   options?: any,
   queryKey?: string,
 ) => {
-  const role = useRole();
   return useQuery({
     queryKey: [queryKey || 'searchOrdersByKeywork', keyword],
-    queryFn: () => searchOrdersByKeyword(keyword, role),
+    queryFn: () => searchOrdersByKeyword(keyword),
     enabled: !!keyword,
     ...options,
   });

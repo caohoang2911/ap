@@ -1,7 +1,5 @@
 import { axiosClient, queryClient } from '@/api/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useRole } from '~/src/core/hooks/useRole';
-import { Role } from '~/src/types/employee';
 import { OrderDetail } from '~/src/types/order-pick';
 
 /** Stable fallback — never use inline `{}` or every render gets a new reference and breaks effect deps. */
@@ -15,41 +13,27 @@ type Response = { error: string } & {
   data: OrderDetail;
 };
 
-const getDetailOrder = async (
-  { orderCode }: Variables,
-  role?: Role,
-): Promise<Response> => {
+const getDetailOrder = async ({ orderCode }: Variables): Promise<Response> => {
   const params = {
     orderCode,
   };
-  const contextPath = role === Role.DRIVER ? 'app-pick-driver' : 'app-pick';
-  return await axiosClient.get(`${contextPath}/getOrderDetail`, { params });
+  return await axiosClient.get('app-pick/getOrderDetail', { params });
 };
 
-type PrefetchVariables = {
-  orderCode?: string;
-  isDriver?: boolean;
-};
-
-export const prefetchOrderDetailForCode = async ({
-  orderCode,
-  isDriver = false,
-}: PrefetchVariables) => {
+export const prefetchOrderDetailForCode = async ({ orderCode }: Variables) => {
   if (!orderCode) return;
-  const role = isDriver ? Role.DRIVER : undefined;
   return queryClient.prefetchQuery({
     queryKey: ['orderDetail', orderCode],
-    queryFn: () => getDetailOrder({ orderCode }, role),
+    queryFn: () => getDetailOrder({ orderCode }),
     staleTime: 30 * 1000,
   });
 };
 
 const useOrderDetailQuery = ({ orderCode }: Variables) => {
-  const role = useRole();
   return useQuery({
     queryKey: ['orderDetail', orderCode],
     queryFn: () => {
-      return getDetailOrder({ orderCode }, role);
+      return getDetailOrder({ orderCode });
     },
     enabled: !!orderCode,
     staleTime: 30 * 1000,

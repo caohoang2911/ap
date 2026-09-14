@@ -1,19 +1,17 @@
 import { create } from 'zustand';
 import { createSelectors } from '../../utils/browser';
-import { OrderStatus, OrderStatusDriver } from '~/src/types/order';
+import { OrderStatus } from '~/src/types/order';
 
 const TAB_STATUS_DEFAULT = 'CONFIRMED';
 
 interface OrdersListState {
   isScanQrCode: boolean;
-  selectedOrderCounter: OrderStatus | OrderStatusDriver;
+  selectedOrderCounter: OrderStatus;
   keyword: string;
   deliveryType: string | null;
   fromScanQrCode: boolean;
   toggleScanQrCode: (status: boolean) => void;
-  setSelectedOrderCounter: (
-    status: OrderStatus | OrderStatusDriver | undefined,
-  ) => void;
+  setSelectedOrderCounter: (status: OrderStatus | undefined) => void;
   setKeyWord: (keyword?: string) => void;
   setFromScanQrCode: (fromScanQrCode: boolean) => void;
   setDeliveryType: (deliveryType: string | null) => void;
@@ -29,9 +27,7 @@ const _useOrders = create<OrdersListState>((set) => ({
   toggleScanQrCode: (isScanQrCode: boolean) => {
     set({ isScanQrCode });
   },
-  setSelectedOrderCounter: (
-    selectedOrderCounter: OrderStatus | OrderStatusDriver | undefined,
-  ) => {
+  setSelectedOrderCounter: (selectedOrderCounter: OrderStatus | undefined) => {
     set({ selectedOrderCounter });
   },
   setFromScanQrCode: (fromScanQrCode: boolean) => {
@@ -58,9 +54,8 @@ export const useOrders = createSelectors(_useOrders);
 export const toggleScanQrCode = (status: boolean) =>
   _useOrders.getState().toggleScanQrCode(status);
 
-export const setSelectedOrderCounter = (
-  status: OrderStatus | OrderStatusDriver | undefined,
-) => _useOrders.getState().setSelectedOrderCounter(status);
+export const setSelectedOrderCounter = (status: OrderStatus | undefined) =>
+  _useOrders.getState().setSelectedOrderCounter(status);
 
 export const setKeyWord = (keyword?: string) =>
   _useOrders.getState().setKeyWord(keyword);

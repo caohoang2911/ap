@@ -18,10 +18,6 @@ export enum TargetScreen {
   ORDER_LISTING = 'ORDER-LISTING',
 }
 
-export enum ActionFromNotification {
-  ENABLE_DRIVER_ORDER_ASSIGN_STATUS = 'ENABLE_DRIVER_ORDER_ASSIGN_STATUS',
-}
-
 // Set notification handler outside component for global configuration
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -232,26 +228,13 @@ export const usePushNotifications: any = () => {
         }
 
         // Handle foreground notifications by setting params like background clicks
-        const { action } = remoteMessage.data || {};
-
         console.log(remoteMessage, 'remoteMessage');
-
-        if (
-          action === ActionFromNotification.ENABLE_DRIVER_ORDER_ASSIGN_STATUS
-        ) {
-          queryClient.resetQueries({ queryKey: ['getMyProfile'] });
-        }
 
         queryClient.resetQueries({ queryKey: ['searchOrders'] });
         queryClient.resetQueries({ queryKey: ['getOrderStatusCounters'] });
-
-        if (
-          action !== ActionFromNotification.ENABLE_DRIVER_ORDER_ASSIGN_STATUS
-        ) {
-          queryClient.resetQueries({
-            queryKey: ['getOrderDeliveryTypeCounters'],
-          });
-        }
+        queryClient.resetQueries({
+          queryKey: ['getOrderDeliveryTypeCounters'],
+        });
 
         // Xử lý riêng cho iOS và Android
         if (Platform.OS === 'ios') {

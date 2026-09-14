@@ -11,13 +11,6 @@ export const ORDER_COUNTER_STATUS: any = {
   SHIPPING: 'Đang giao hàng',
 };
 
-export const ORDER_COUNTER_STATUS_DRIVER: any = {
-  ALL: 'Tất cả',
-  UPCOMING_DELIVERY: 'Sắp giao',
-  ON_TIME_DELIVERY: 'Tới giờ giao',
-  OVERDUE_DELIVERY: 'Trễ giờ giao',
-};
-
 export const ORDER_COUNTER_STATUS_PRIORITY: any = {
   ALL: 1,
   CONFIRMED: 2,
@@ -27,13 +20,6 @@ export const ORDER_COUNTER_STATUS_PRIORITY: any = {
   SHIPPING: 6,
   COMPLETED: 7,
   CANCELLED: 8,
-};
-
-export const ORDER_COUNTER_STATUS_PRIORITY_DRIVER: any = {
-  ALL: 1,
-  UPCOMING_DELIVERY: 2,
-  ON_TIME_DELIVERY: 3,
-  OVERDUE_DELIVERY: 4,
 };
 
 export const ORDER_STATUS = {

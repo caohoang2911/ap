@@ -3,7 +3,13 @@ import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import { toLower } from 'lodash';
 import moment from 'moment';
-import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { prefetchOrderDetailForCode } from '~/src/api/app-pick/use-get-order-detail';
@@ -31,10 +37,15 @@ const MissingInvoiceOrderItem = ({
     isNavigatingRef.current = true;
 
     onPress();
-    prefetchOrderDetailForCode({ orderCode: item.code, isDriver: false });
-    router.push({ pathname: `orders/order-pick/${item.code}`, params: { status: item.status } });
+    prefetchOrderDetailForCode({ orderCode: item.code });
+    router.push({
+      pathname: `orders/order-pick/${item.code}`,
+      params: { status: item.status },
+    });
 
-    setTimeout(() => { isNavigatingRef.current = false; }, 800);
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 800);
   }, [item.code, item.status, router, onPress]);
 
   const deliveryDay = item.deliveryTimeRange
@@ -48,7 +59,9 @@ const MissingInvoiceOrderItem = ({
     <TouchableOpacity onPress={handlePress}>
       <View className="mx-4 mb-3 rounded-md border border-gray-200 overflow-hidden bg-white">
         <View className="bg-bgPrimary px-3 py-2.5 flex flex-row justify-between items-center">
-          <Text className="font-semibold text-base text-colorPrimary">{item.code}</Text>
+          <Text className="font-semibold text-base text-colorPrimary">
+            {item.code}
+          </Text>
           <Badge
             label={item.statusName}
             variant={toLower(item.status) as any}
@@ -61,7 +74,11 @@ const MissingInvoiceOrderItem = ({
               {item.customer?.name}
             </Text>
             <Badge
-              label={<Text className="text-sm">{formatCurrency(item.amount, { unit: true })}</Text>}
+              label={
+                <Text className="text-sm">
+                  {formatCurrency(item.amount, { unit: true })}
+                </Text>
+              }
               variant="warning"
             />
           </View>
@@ -71,7 +88,10 @@ const MissingInvoiceOrderItem = ({
               <Text className="text-gray-600">
                 {deliveryDay}
                 {deliveryHh ? (
-                  <Text className="text-orange-500 font-semibold"> {deliveryHh}</Text>
+                  <Text className="text-orange-500 font-semibold">
+                    {' '}
+                    {deliveryHh}
+                  </Text>
                 ) : null}
               </Text>
             </View>
@@ -105,7 +125,11 @@ const MissingInvoiceBottomSheet = forwardRef<any>((_, ref) => {
   const handleClose = useCallback(() => setVisible(false), []);
 
   const { data, isFetchingNextPage, hasNextPage, fetchNextPage, isLoading } =
-    useSearchOrders(PARAMS as any, { enabled: visible }, 'missingInvoiceOrders');
+    useSearchOrders(
+      PARAMS as any,
+      { enabled: visible },
+      'missingInvoiceOrders',
+    );
 
   const orders = (data?.pages as unknown as Order[]) ?? [];
 
@@ -161,11 +185,14 @@ const MissingInvoiceBottomSheet = forwardRef<any>((_, ref) => {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         contentContainerStyle={{ paddingTop: 12 }}
-        onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+        onEndReached={() =>
+          hasNextPage && !isFetchingNextPage && fetchNextPage()
+        }
         onEndReachedThreshold={0.3}
       />
     </SBottomSheet>
   );
 });
+MissingInvoiceBottomSheet.displayName = 'MissingInvoiceBottomSheet';
 
 export default MissingInvoiceBottomSheet;

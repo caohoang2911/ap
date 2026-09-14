@@ -8,7 +8,6 @@ import {
 } from '~/src/api/shared/http-busy';
 import { hideAlert, showAlert } from '~/src/core/store/alert-dialog';
 import { OrderDetail } from '~/src/types/order-pick';
-import { useRole } from './useRole';
 
 /** Worker chạy mỗi 3s (theo yêu cầu). */
 const POLL_INTERVAL_MS = 3000;
@@ -46,7 +45,6 @@ export const useOrderStatusAutoRefresh = (
   orderCode?: string,
   options?: Options,
 ) => {
-  const role = useRole();
   const enabled = options?.enabled ?? true;
 
   // Tránh chồng request và tránh show popup nhiều lần.
@@ -107,7 +105,7 @@ export const useOrderStatusAutoRefresh = (
 
         isCheckingRef.current = true;
         try {
-          const beStatus = await getOrderStatus(orderCode, role);
+          const beStatus = await getOrderStatus(orderCode);
           if (cancelled) return;
           if (shouldDiscardStatusPollResult(pollStartedAt)) return;
           if (Date.now() < manualSyncUntilRef.current) return;
@@ -132,6 +130,6 @@ export const useOrderStatusAutoRefresh = (
         cancelled = true;
         clearInterval(intervalId);
       };
-    }, [enabled, orderCode, role]),
+    }, [enabled, orderCode]),
   );
 };

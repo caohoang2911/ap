@@ -3,10 +3,9 @@ import Entypo from '@expo/vector-icons/Entypo';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ORDER_STATUS } from '@/core/constants/order';
 import { useOrderDetailForCode } from '~/src/api/app-pick/use-get-order-detail';
-import { useDriverOrderActions } from '~/src/core/hooks/useDriverOrderActions';
 import { More2Fill, QRScanLine } from '~/src/core/svgs';
+import { NavigationHelpers } from '~/src/core/utils/navigation';
 import {
   getScanToDeliveryInfo,
   isEnableScanToDelivery,
@@ -21,67 +20,35 @@ const HeaderActionBtn = () => {
     useState(false);
   const { code: orderCode } = useLocalSearchParams<{ code: string }>();
 
-  const {
-    isDriver,
-    handleScanBagDelivery,
-    handleAssignOrder,
-    handleUnassignOrder,
-  } = useDriverOrderActions(orderCode);
-
   const { orderDetail } = useOrderDetailForCode(orderCode);
   const { header } = orderDetail || {};
   const { status, deliveryType, shipping } = header || {};
 
-  const isShipping = status === ORDER_STATUS.SHIPPING;
-  const isStorePackaged = status === ORDER_STATUS.STORE_PACKED;
-
   const actionRef = useRef<any>();
 
-  const driverActions = [
-    {
-      key: 'assign-order-to-me',
-      title: 'Gán đơn cho tài xế nội bộ',
-      enabled: true,
-      icon: <MaterialIcons name="person-add-alt" size={24} color="black" />,
-    },
-    {
-      key: 'unassign-order-to-me',
-      title: 'Huỷ gán đơn book AhaMove',
-      enabled: true,
-      icon: (
-        <MaterialIcons name="person-remove-alt-1" size={24} color="black" />
-      ),
-    },
-  ];
-
   const actions = useMemo(
-    () =>
-      isDriver
-        ? driverActions
-        : [
-            {
-              key: 'scan-bag',
-              title: getScanToDeliveryInfo({
-                deliveryType,
-                status,
-                orderCode,
-                shipping,
-              })?.title,
-              enabled: isEnableScanToDelivery({ status }),
-              hidden: isHiddenScanToDelivery({ deliveryType }),
-              icon: <QRScanLine />,
-            },
-            {
-              key: 'delivery-order',
-              title: 'Vận chuyển',
-              allowSubmenu: true,
-              enabled: true,
-              icon: (
-                <MaterialIcons name="delivery-dining" size={24} color="black" />
-              ),
-            },
-          ],
-    [orderCode, isShipping, isStorePackaged, isDriver, deliveryType, status, shipping],
+    () => [
+      {
+        key: 'scan-bag',
+        title: getScanToDeliveryInfo({
+          deliveryType,
+          status,
+          orderCode,
+          shipping,
+        })?.title,
+        enabled: isEnableScanToDelivery({ status }),
+        hidden: isHiddenScanToDelivery({ deliveryType }),
+        icon: <QRScanLine />,
+      },
+      {
+        key: 'delivery-order',
+        title: 'Vận chuyển',
+        allowSubmenu: true,
+        enabled: true,
+        icon: <MaterialIcons name="delivery-dining" size={24} color="black" />,
+      },
+    ],
+    [orderCode, deliveryType, status, shipping],
   );
 
   const renderItem = ({
@@ -129,13 +96,7 @@ const HeaderActionBtn = () => {
         setDeliverySelectionVisible(true);
         break;
       case 'scan-bag':
-        handleScanBagDelivery();
-        break;
-      case 'assign-order-to-me':
-        handleAssignOrder(orderCode);
-        break;
-      case 'unassign-order-to-me':
-        handleUnassignOrder();
+        NavigationHelpers.toOrderScanToDelivery(orderCode);
         break;
       default:
         break;

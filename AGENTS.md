@@ -80,9 +80,9 @@ Các màn `[code].tsx` có component và Zustand store tương ứng:
 - `store-start-order-scan-to-delivery` và
   `store-complete-order-scan-to-delivery`: bàn giao group-shipping tại cửa hàng.
 
-Picker và driver có thể dùng screen/action và context API khác nhau. Khi thay đổi
-một luồng, lần theo toàn bộ route → screen → component → API/query → Zustand
-store → navigation tiếp theo; kiểm tra cả reset state khi đổi mã đơn hoặc rời màn.
+Khi thay đổi một luồng, lần theo toàn bộ route → screen → component → API/query
+→ Zustand store → navigation tiếp theo; kiểm tra cả reset state khi đổi mã đơn
+hoặc rời màn.
 
 ### State
 
@@ -111,8 +111,7 @@ Tất cả request dùng axios instance ở `src/api/shared/client.tsx`:
   business error theo pattern của endpoint lân cận.
 - Auth header, global sign-out, flash message và Crashlytics là cross-cutting
   concern của shared client; không lặp lại theo từng endpoint.
-- Endpoint dùng chung cho picker/driver phải chọn `app-pick/` hoặc
-  `app-pick-driver/` qua `useRole()`/`Role` như các hook hiện có.
+- Endpoint của luồng xử lý đơn dùng context `app-pick/`.
 - Không thêm hoặc log token/credential mới. Không đưa giá trị nhạy cảm vào tài
   liệu, test fixture hay output debug.
 

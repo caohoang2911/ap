@@ -28,9 +28,8 @@ description: >-
    `AxiosResponse` đầy đủ.
 4. Backend có thể trả `{ error }` với HTTP 200. Xử lý business error theo contract
    của endpoint; không chỉ dựa vào `catch`/HTTP status.
-5. Với API picker/driver, chọn context path bằng `useRole()`/`Role`. Query key
-   phải chứa các biến làm thay đổi response, gồm role nếu cache giữa role không
-   được phép dùng chung.
+5. API xử lý đơn dùng context `app-pick`. Query key phải chứa đầy đủ các biến
+   làm thay đổi response.
 6. Query phải có `enabled` khi input bắt buộc chưa sẵn sàng. Giữ key nhất quán
    giữa query, prefetch, invalidate và setQueryData.
 7. Mutation chỉ cập nhật cache hoặc invalidate sau khi business operation thành
@@ -52,7 +51,7 @@ description: >-
 - Chạy `yarn type-check`.
 - Kiểm tra query disabled/enabled, success, business error, network error và
   invalidate/refetch.
-- Với endpoint role-aware, kiểm tra cả picker và driver hoặc mô tả rõ nhánh chưa
+- Với endpoint phân quyền, kiểm tra các role được hỗ trợ hoặc mô tả rõ nhánh chưa
   thể kiểm tra.
 - Chạy ESLint/Prettier theo phạm vi và báo baseline theo `AGENTS.md`.
 
@@ -61,5 +60,5 @@ description: >-
 - `src/api/shared/client.tsx`
 - `src/api/shared/api-provider.tsx`
 - `src/api/app-pick/use-get-order-detail.ts`
-- `src/core/hooks/useRole.ts`
+- `src/core/utils/employee.ts`
 - `src/core/utils/browser.ts`

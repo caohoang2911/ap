@@ -11,7 +11,7 @@ description: >-
 
 ## Quy trình
 
-1. Xác định bước nghiệp vụ và actor liên quan: picker, driver hoặc store.
+1. Xác định bước nghiệp vụ và actor liên quan: picker hoặc store.
 2. Lần theo route builder → screen `[code].tsx` → component → API/query →
    Zustand store → navigation tiếp theo. Đọc implementation gần nhất trước khi
    tạo pattern mới.
@@ -21,9 +21,8 @@ description: >-
    progress hoặc modal trong store riêng của flow.
 5. Khi flow phụ thuộc `code`, kiểm tra initialization, thay đổi code, remount,
    back navigation và hàm reset. Không để state đơn cũ rò sang đơn mới.
-6. Kiểm tra khác biệt role. API dùng chung phải chọn context `app-pick` hoặc
-   `app-pick-driver` theo `Role`; action chỉ có ở một role phải được gate ở UI và
-   data layer phù hợp.
+6. API của luồng xử lý đơn dùng context `app-pick`; action theo quyền phải được
+   gate ở UI và data layer phù hợp.
 7. Nếu screen quét mã, dùng cùng một handler cho camera và
    `usePdaScanTarget`. Gọi hook trước mọi early return.
 8. Giữ stable references trong effect, list, Portal và selector. Với update
@@ -36,7 +35,7 @@ description: >-
   cùng mount.
 - Scan trùng, scan nhanh, nhập barcode thủ công và API trả business error.
 - Rời màn trong lúc mutation, print hoặc handover đang chạy.
-- Picker và driver cùng mã đơn nhưng có endpoint/action khác nhau.
+- Picker và store cùng mã đơn nhưng có thể có action khác nhau.
 - Group-shipping bắt đầu, tiếp tục và hoàn tất với progress store đúng.
 - Quay lại danh sách đơn: cache, counter và trạng thái hiển thị được cập nhật.
 
@@ -53,4 +52,4 @@ description: >-
 - `src/core/utils/navigation.ts`
 - `src/app/(drawer)/orders/`
 - `src/core/store/`
-- `src/api/app-pick/` và `src/api/app-pick-driver/`
+- `src/api/app-pick/`

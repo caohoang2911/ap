@@ -17,7 +17,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { showMessage } from 'react-native-flash-message';
 import { WebView } from 'react-native-webview';
 import { WebViewMessageEvent } from 'react-native-webview/lib/WebViewTypes';
-import { EmployeeRole } from '~/src/types/employee';
+import { isAllowedAppPickRole } from '~/src/core/utils/employee';
 import { authorizeAppPickClient } from '../api/auth/use-authorize-app-pick-client';
 import AuthorizeLoadingOverlay from '../components/shared/authorize-loading-overlay';
 import RequestPermissionStore from '../components/shared/request-permission-store';
@@ -74,19 +74,6 @@ const HARAVAN_FORM_STYLE_SCRIPT = `
 })();
 true;
 `;
-
-const WHITE_LIST_ROLE = [
-  EmployeeRole.STORE,
-  EmployeeRole.STORE_FULLTIME_PICKER,
-  EmployeeRole.STORE_MANAGER,
-  EmployeeRole.ADMIN,
-  EmployeeRole.DRIVER,
-  EmployeeRole.STORE_SHIFT_SUPERVISOR,
-];
-
-const isAllowedAuthorizeRole = (role?: string) =>
-  !!role &&
-  (WHITE_LIST_ROLE.includes(role as EmployeeRole) || role.startsWith('STORE'));
 
 /**
  * Đích redirect sau SSO (haravan.com) là trang seedcom.vn — chỉ nhận khi hostname
@@ -177,7 +164,7 @@ const Authorize = () => {
 
           // Giữ overlay đến khi signIn xong / lỗi / không đủ quyền — không tắt
           // ngay khi nhận event (user vẫn còn trên WebView một nhịp).
-          if (isAllowedAuthorizeRole(role)) {
+          if (isAllowedAppPickRole(role)) {
             let authorizedZas: string;
             try {
               const response = await authorizeAppPickClient({ zas });

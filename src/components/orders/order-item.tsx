@@ -1,4 +1,3 @@
-import Octicons from '@expo/vector-icons/Octicons';
 import { useRouter } from 'expo-router';
 import { isEmpty, toLower } from 'lodash';
 import moment from 'moment';
@@ -11,7 +10,6 @@ import {
   ORDER_DELIVERY_TYPE,
   ORDER_STATUS_BADGE_VARIANT,
 } from '@/core/constants/order';
-import { useRoleDriver } from '~/src/core/hooks/useRole';
 import { useConfig } from '~/src/core/store/config';
 import { getConfigNameById } from '~/src/core/utils/config';
 import { expectedDeliveryTime, getRelativeTime } from '~/src/core/utils/moment';
@@ -80,6 +78,7 @@ const RowWithLabel = memo(
     );
   },
 );
+RowWithLabel.displayName = 'RowWithLabel';
 
 const OrderItem = ({
   statusName,
@@ -102,7 +101,6 @@ const OrderItem = ({
   maxPickingTime,
   pickedItemProgress,
   bagLabels,
-  storeCode,
   saleChannel,
 }: Order) => {
   const router = useRouter();
@@ -110,14 +108,11 @@ const OrderItem = ({
 
   const config = useConfig.use.config();
   const orderTags = config?.orderTags || [];
-  const stores = config?.stores || [];
   const fulfillErrorTypes = config?.fulfillErrorTypes || [];
   const fulfillErrorTypeDisplay = getConfigNameById(
     fulfillErrorTypes,
     fulfillError?.type,
   );
-
-  const isDriver = useRoleDriver();
 
   const handlePress = useCallback(() => {
     if (isNavigatingRef.current) return;
@@ -125,44 +120,30 @@ const OrderItem = ({
 
     prefetchOrderDetailForCode({
       orderCode: code,
-      isDriver,
     });
-    if (isDriver) {
-      router.push(`orders/order-invoice/${code}`);
-    } else {
-      router.push({
-        pathname: `orders/order-pick/${code}`,
-        params: { status },
-      });
-    }
+    router.push({
+      pathname: `orders/order-pick/${code}`,
+      params: { status },
+    });
 
     setTimeout(() => {
       isNavigatingRef.current = false;
     }, 800);
-  }, [code, status, isDriver, router]);
+  }, [code, status, router]);
 
   const shouldShowassignee = picker?.username && picker?.name;
-  const storeName = getConfigNameById(stores, storeCode);
 
   const notes = useMemo(() => {
-    if (isDriver) {
-      return [driverNote].filter(Boolean);
-    }
-
     if (deliveryType === ORDER_DELIVERY_TYPE.APARTMENT_COMPLEX_DELIVERY) {
       return [pickerNote, driverNote].filter(Boolean);
     }
 
     return [pickerNote].filter(Boolean);
-  }, [driverNote, pickerNote, deliveryType, isDriver]);
+  }, [driverNote, pickerNote, deliveryType]);
 
   // Memo icons để RowWithLabel không bị re-render không cần thiết
   const userIcon = useMemo(
     () => <Feather name="user" size={22} color="black" />,
-    [],
-  );
-  const homeIcon = useMemo(
-    () => <Octicons name="home" size={18} color="gray" />,
     [],
   );
   const mapPinIcon = useMemo(
@@ -236,18 +217,11 @@ const OrderItem = ({
               />
             </View>
           </View>
-          {isDriver && (
-            <RowWithLabel
-              icon={homeIcon}
-              label="Siêu thị"
-              value={storeName || ''}
-            />
-          )}
           <RowWithLabel
             icon={mapPinIcon}
             label="ĐC giao"
             value={deliveryAddress?.fullAddress}
-            numberOfLines={isDriver ? 2 : 1}
+            numberOfLines={1}
           />
           <RowWithLabel
             icon={calendarIcon}

@@ -21,13 +21,10 @@ import { useGetOrderStatusCounters } from '~/src/api/app-pick';
 import { queryClient } from '~/src/api/shared';
 import {
   ORDER_COUNTER_STATUS,
-  ORDER_COUNTER_STATUS_DRIVER,
   ORDER_COUNTER_STATUS_PRIORITY,
-  ORDER_COUNTER_STATUS_PRIORITY_DRIVER,
 } from '@/core/constants/order';
 import { useAuth } from '~/src/core';
 import { setSelectedOrderCounter, useOrders } from '~/src/core/store/orders';
-import { Role } from '~/src/types/employee';
 
 /**
  * Một số máy không gọi onMomentumScrollEnd sau scrollToIndex — vẫn cần fallback.
@@ -45,7 +42,7 @@ const TabsStatus = () => {
     null,
   );
 
-  const { storeCode, role } = useAuth.use.userInfo();
+  const { storeCode } = useAuth.use.userInfo();
   const { data, refetch, isStale } = useGetOrderStatusCounters();
   const orderStatusCounters = data?.data
     ? { ...cachingOrderStatusCounters.current, ...data.data }
@@ -92,24 +89,17 @@ const TabsStatus = () => {
   }, [storeCode]);
 
   const dataStatusCounters = useMemo(() => {
-    const priority =
-      role === Role.DRIVER
-        ? ORDER_COUNTER_STATUS_PRIORITY_DRIVER
-        : ORDER_COUNTER_STATUS_PRIORITY;
-    const labels =
-      role === Role.DRIVER ? ORDER_COUNTER_STATUS_DRIVER : ORDER_COUNTER_STATUS;
-
     return Object.keys(orderStatusCounters)
-      ?.filter((key) => priority[key] !== undefined)
+      ?.filter((key) => ORDER_COUNTER_STATUS_PRIORITY[key] !== undefined)
       ?.map((key: string) => {
         return {
           id: key,
-          label: labels[key],
-          priority: priority[key],
+          label: ORDER_COUNTER_STATUS[key],
+          priority: ORDER_COUNTER_STATUS_PRIORITY[key],
           number: (orderStatusCounters as any)[key],
         };
       });
-  }, [orderStatusCounters, role]);
+  }, [orderStatusCounters]);
 
   const sortedDataStatusCounters = useMemo(() => {
     return sortByPriority(dataStatusCounters || []);

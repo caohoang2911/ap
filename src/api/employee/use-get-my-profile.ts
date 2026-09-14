@@ -37,15 +37,12 @@ export const useGetMyProfile = () => {
     if (dataUpdatedAt <= lastAppliedProfileDataUpdatedAt) return;
     lastAppliedProfileDataUpdatedAt = dataUpdatedAt;
 
-    const { driverOrderAssignSetting, kposShiftStatus } = data.data;
     setLoading(true);
 
     const currentUserInfo = useAuth.getState().userInfo;
     setUser({
       ...currentUserInfo,
-      ...driverOrderAssignSetting,
-      kposShiftStatus: kposShiftStatus,
-      driverOrderAssignStatus: driverOrderAssignSetting?.status,
+      kposShiftStatus: data.data.kposShiftStatus,
     });
     setLoading(false);
   }, [authStatus, data, data?.error, dataUpdatedAt]);

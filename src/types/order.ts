@@ -11,9 +11,6 @@ export type OrderStatus =
   | 'TRANSFERRED'
   | 'COMPLETED'
   | 'STORE_TRANSFER_SHIPPER';
-export type OrderStatusDriver =
-  'UPCOMING_DELIVERY' | 'ON_TIME_DELIVERY' | 'OVERDUE_DELIVERY';
-
 export enum OrderStatusValue {
   ALL = 'ALL',
   CONFIRMED = 'CONFIRMED',

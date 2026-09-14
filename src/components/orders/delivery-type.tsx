@@ -20,7 +20,6 @@ import { useAuth } from '~/src/core';
 import { useConfig } from '~/src/core/store/config';
 import { setDeliveryType, useOrders } from '~/src/core/store/orders';
 import { getConfigNameById } from '~/src/core/utils/config';
-import { Role } from '~/src/types/employee';
 import { OrderStatus } from '~/src/types/order';
 
 type DeliveryTypeOption = {
@@ -40,7 +39,6 @@ function DeliveryType() {
 
   const deliveryType = useOrders.use.deliveryType();
   const authStatus = useAuth.use.status();
-  const { role } = useAuth.use.userInfo();
 
   const config = useConfig.use.config();
   const orderDeliveryTypes = config?.orderDeliveryTypes || [];
@@ -92,14 +90,10 @@ function DeliveryType() {
 
       const nextDeliveryType =
         refCurrentStatus.current === value ? null : value;
-      void prefetchSearchOrders(
-        queryClient,
-        {
-          status: (fromScanQrCode ? 'ALL' : selectedOrderCounter) as any,
-          deliveryType: nextDeliveryType,
-        },
-        role as Role,
-      );
+      void prefetchSearchOrders(queryClient, {
+        status: (fromScanQrCode ? 'ALL' : selectedOrderCounter) as any,
+        deliveryType: nextDeliveryType,
+      });
 
       if (refCurrentStatus.current === value) {
         setDeliveryType(null);
@@ -109,7 +103,7 @@ function DeliveryType() {
         refCurrentStatus.current = value;
       }
     },
-    [fromScanQrCode, selectedOrderCounter, role],
+    [fromScanQrCode, selectedOrderCounter],
   );
 
   const options: DeliveryTypeOption[] = useMemo(() => {

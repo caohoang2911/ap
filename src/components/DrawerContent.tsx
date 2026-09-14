@@ -11,7 +11,6 @@ import { Dimensions, Pressable, Text, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { DUMMY_PROCESSING_SLIP_COUNT } from '~/src/core/constants/drawer';
 import { ROUTES } from '~/src/core/constants/routes';
-import { useRoleDriver } from '~/src/core/hooks/useRole';
 import { useSignOut } from '~/src/core/hooks/useSignOut';
 import {
   canManagePickerShift,
@@ -50,7 +49,6 @@ export function DrawerContent(_drawerProps: DrawerContentComponentProps) {
   const employeeRoles = config?.employeeRoles || [];
   const roleName = getConfigNameById(employeeRoles, userInfo?.role);
 
-  const isDriver = useRoleDriver();
   const canAccessPickerShiftManagement = canManagePickerShift(userInfo?.role);
   const canManageEmployees = canManageStoreEmployees(userInfo?.role);
   const canManageTeleGroup = canManageStoreTeleGroup(userInfo?.role);
@@ -75,7 +73,7 @@ export function DrawerContent(_drawerProps: DrawerContentComponentProps) {
       ),
       onPress: () => navigateFromDrawer(ROUTES.APP.PROCESSING_SLIPS),
       enable: true,
-      show: !isDriver,
+      show: true,
       badgeCount: DUMMY_PROCESSING_SLIP_COUNT,
     },
     {
@@ -85,35 +83,35 @@ export function DrawerContent(_drawerProps: DrawerContentComponentProps) {
       ),
       onPress: () => navigateFromDrawer(ROUTES.APP.SUPPORT_CENTER),
       enable: true,
-      show: !isDriver,
+      show: true,
     },
     {
       label: 'Quản lý ca Picker',
       icon: <Ionicons name="calendar-outline" size={20} color="black" />,
       onPress: () => navigateFromDrawer(ROUTES.APP.PICKER_SHIFT_MANAGEMENT),
       enable: canAccessPickerShiftManagement,
-      show: !isDriver && canAccessPickerShiftManagement,
+      show: canAccessPickerShiftManagement,
     },
     {
       label: 'Quản lý nhân viên',
       icon: <Ionicons name="people-outline" size={20} color="black" />,
       onPress: () => navigateFromDrawer(ROUTES.APP.EMPLOYEE_MANAGEMENT),
       enable: canManageEmployees,
-      show: !isDriver && canManageEmployees,
+      show: canManageEmployees,
     },
     {
       label: 'Quản lý nhóm tele',
       icon: <Ionicons name="paper-plane-outline" size={20} color="black" />,
       onPress: () => navigateFromDrawer(ROUTES.APP.TELEGRAM_GROUP_MANAGEMENT),
       enable: canManageTeleGroup,
-      show: !isDriver && canManageTeleGroup,
+      show: canManageTeleGroup,
     },
     {
       label: 'Cài đặt',
       icon: <AntDesign name="setting" size={20} color="black" />,
       onPress: () => navigateFromDrawer(ROUTES.APP.SETTINGS),
       enable: true,
-      show: !isDriver,
+      show: true,
     },
     {
       label: 'Quyền ứng dụng',

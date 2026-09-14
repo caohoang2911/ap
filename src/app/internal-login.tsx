@@ -24,6 +24,7 @@ import {
 } from '@/core/hooks/useHandleDeepLink';
 import { ROUTES } from '@/core/constants/routes';
 import { NavigationHelpers } from '@/core/utils/navigation';
+import { isAllowedAppPickRole } from '@/core/utils/employee';
 
 type LoginValues = {
   username: string;
@@ -46,6 +47,15 @@ export default function InternalLogin() {
       }
 
       const userInfo = data.data || {};
+      if (!isAllowedAppPickRole(userInfo.role)) {
+        Keyboard.dismiss();
+        showMessage({
+          message: 'Tài khoản chưa được cấp quyền truy cập App Pick',
+          type: 'danger',
+        });
+        return;
+      }
+
       const { zas } = userInfo;
       if (!zas) return;
 

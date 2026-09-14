@@ -28,7 +28,7 @@ const MoreActionsBtn = ({ code }: MoreActionsBtnProps) => {
   const actionRef = useRef<any>();
   const renderItem = useMemo(
     () =>
-      ({
+      function ActionItem({
         onClickAction,
         key,
         title,
@@ -38,7 +38,7 @@ const MoreActionsBtn = ({ code }: MoreActionsBtnProps) => {
         title: string | React.ReactNode;
         icon: React.ReactNode;
         onClickAction: (key: string) => void;
-      }) => {
+      }) {
         return (
           <Pressable
             onPress={() => onClickAction?.(key)}
@@ -58,7 +58,6 @@ const MoreActionsBtn = ({ code }: MoreActionsBtnProps) => {
         case 'view-invoice':
           prefetchOrderDetailForCode({
             orderCode: code,
-            isDriver: false,
           });
           router.push(`orders/order-invoice/${code}`);
           break;

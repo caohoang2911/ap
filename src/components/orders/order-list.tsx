@@ -24,7 +24,6 @@ import { useRefreshToken } from '~/src/api/auth/use-refresh-token';
 import { useGetMyProfile } from '~/src/api/employee/use-get-my-profile';
 import { queryClient } from '~/src/api/shared';
 import { setUser, useAuth } from '~/src/core';
-import { useRoleDriver } from '~/src/core/hooks/useRole';
 import { setToken, setUserInfo } from '~/src/core/store/auth/utils';
 import { setLoading } from '~/src/core/store/loading';
 import {
@@ -142,7 +141,6 @@ const OrderList = () => {
   const deliveryType = useOrders.use.deliveryType();
   const fromScanQrCode = useOrders.use.fromScanQrCode();
 
-  const isDriver = useRoleDriver();
   const [isOrderListFocused, setIsOrderListFocused] = useState(false);
 
   useFocusEffect(
@@ -152,18 +150,14 @@ const OrderList = () => {
     }, []),
   );
 
-  useGetUnseenNotiCounter(!isDriver && isOrderListFocused, {
+  useGetUnseenNotiCounter(isOrderListFocused, {
     refetchInterval: isOrderListFocused ? UNSEEN_NOTI_COUNTER_POLL_MS : false,
   });
 
-  // Initialize default tab based on user role
+  // Initialize default tab for the picker flow.
   useEffect(() => {
-    if (isDriver) {
-      setSelectedOrderCounter('ALL');
-    } else if (!isDriver) {
-      setSelectedOrderCounter('CONFIRMED');
-    }
-  }, [isDriver]);
+    setSelectedOrderCounter('CONFIRMED');
+  }, []);
 
   // State
   const [isRefreshIndicatorVisible, setIsRefreshIndicatorVisible] =

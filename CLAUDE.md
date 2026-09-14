@@ -81,7 +81,7 @@ An order moves through several distinct screen families under `src/app/(drawer)/
 - `order-scan-to-delivery/` — scan bags to hand the order over to delivery. Store: `order-scan-to-delivery`.
 - `store-start-order-scan-to-delivery/` / `store-complete-order-scan-to-delivery/` — store-side group-shipping handover (start vs complete). Stores: `store-start-order-scan-to-delivery`, `complete-order-scan-to-delivery`, plus the `*-group-shipping-progress` stores.
 
-Picker vs driver role changes both the API context path (see "Role-aware endpoints") and which actions/screens apply.
+Order processing uses the store-picker flow and the `app-pick/` API context.
 
 `src/app/_layout.tsx` is the composition root: it mounts all providers (`APIProvider`/react-query, gesture handler, bottom-sheet, portal, custom error boundary), runs `hydrateAuth()`/`hydrateConfig()` synchronously at module load, and gates the app behind the OTA update flow. `AuthWrapper` wires `useProtectedRoute` (auth-based redirects), `useHandleDeepLink`, and `useWatchResponse`.
 
@@ -98,8 +98,8 @@ The auth store persists token/userInfo to MMKV via `src/core/storage.tsx` (`getI
   - **Response interceptor unwraps `response.data`** — query/mutation functions receive the payload directly, not the full axios response. Watch for this when typing responses.
   - Auth: injects the `zas` token header from the auth store; detects `ERROR_AUTH_TOKEN_*` / 401 / 403 and triggers a debounced global sign-out + flash message.
   - The API returns business errors as `response.data.error` (a string) with HTTP 200; the interceptor surfaces these as flash messages (except a blacklist).
-- Hooks are organized by domain: `app-pick/` (store-picker flows), `app-pick-driver/` (driver flows), `auth/`, `employee/`, `config/`, `upload/`. One file per endpoint, named `use-<verb>-<thing>.ts`.
-- **Role-aware endpoints:** several calls switch context path by role, e.g. `getOrderDetail` hits `app-pick-driver/` vs `app-pick/` based on `useRole()` (`src/core/hooks/useRole.ts`, backed by `userInfo.role` / `Role` enum). When adding endpoints used by both pickers and drivers, follow this pattern.
+- Hooks are organized by domain: `app-pick/` (store-picker flows), `auth/`, `employee/`, `config/`, `upload/`. One file per endpoint, named `use-<verb>-<thing>.ts`.
+- Order-processing endpoints use the `app-pick/` context.
 
 ### Styling — NativeWind v4
 

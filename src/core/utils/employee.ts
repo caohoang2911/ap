@@ -1,5 +1,19 @@
 import { EmployeeRole } from '~/src/types/employee';
 
+const APP_PICK_ALLOWED_ROLES: EmployeeRole[] = [
+  EmployeeRole.STORE,
+  EmployeeRole.STORE_FULLTIME_PICKER,
+  EmployeeRole.STORE_MANAGER,
+  EmployeeRole.ADMIN,
+  EmployeeRole.STORE_SHIFT_SUPERVISOR,
+];
+
+/** Role được phép tạo hoặc khôi phục session App Pick. */
+export const isAllowedAppPickRole = (role?: string): boolean =>
+  !!role &&
+  (APP_PICK_ALLOWED_ROLES.includes(role as EmployeeRole) ||
+    role.startsWith('STORE'));
+
 /**
  * Bỏ mã nhân viên khỏi cuối tên (vd. "KFM - Delivery - Sang Nguyễn - SC009226"
  * + code SC009226 → "KFM - Delivery - Sang Nguyễn"), và cắt luôn dấu `-` thừa.

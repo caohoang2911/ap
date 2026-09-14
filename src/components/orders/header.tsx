@@ -14,24 +14,20 @@ import { queryClient } from '~/src/api/shared';
 import { Avatar, AvatarFallback } from '~/src/components/Avatar';
 import TabsStatus from '~/src/components/orders/tab-status';
 import { useAuth } from '~/src/core';
-import { useRole, useRoleDriver } from '~/src/core/hooks/useRole';
 import { useConfig } from '~/src/core/store/config';
 import { setLoading } from '~/src/core/store/loading';
 import { toggleScanQrCode, useOrders } from '~/src/core/store/orders';
 import { getConfigNameById } from '~/src/core/utils/config';
 import { stringUtils } from '~/src/core/utils/string';
 import { Option } from '~/src/types/commons';
-import { Role } from '~/src/types/employee';
 import { colors } from '~/src/ui/colors';
 import { Badge } from '../Badge';
 import OrderListHeaderSkeleton from '../shared/skeleton/order-list-header-skeleton';
 import StoreSelection from '../shared/store-selection';
 import Skeleton from '../Skeleton';
-import AssignStoreBottomSheet from './assign-store-bottom-sheet';
 import DeliveryType from './delivery-type';
 import InputSearch from './input-search';
 import MissingInvoiceBottomSheet from './missing-invoice-bottom-sheet';
-import OrderStatusBottomSheet from './order-status-bottom-sheet';
 import { useGetUnseenNotiCounter } from '~/src/api/app-pick/use-get-unseen-noti-counter';
 import { ROUTES } from '@/core/constants/routes';
 import {
@@ -39,12 +35,8 @@ import {
   stripEmployeeCodeFromName,
 } from '~/src/core/utils/employee';
 
-const MAX_DRIVER_ASSIGNED_STORE_CODES = 2;
-
 const Header = () => {
   const userInfo = useAuth.use.userInfo();
-
-  const role = useRole();
 
   const config = useConfig.use.config();
   const stores = config?.stores || [];
@@ -52,19 +44,14 @@ const Header = () => {
   const storeRef = useRef<any>(null);
   const storeName = getConfigNameById(stores, userInfo?.storeCode);
   const roleName = getConfigNameById(employeeRoles, userInfo?.role);
-  // Tài xế nội bộ: name dạng "… - Sang Nguyễn - SC009226" — bỏ mã NV trước khi lấy tên/avatar.
   const displayName = stripEmployeeCodeFromName(
     userInfo?.name,
     userInfo?.username,
   );
   const representativeName = getRepresentativeFirstName(displayName);
 
-  const driverAssignedStoreCodes = userInfo?.driverAssignedStoreCodes || [];
-  const driverOrderAssignStatus = userInfo?.driverOrderAssignStatus;
-
   const isPickerShiftStatusOnShift = userInfo?.kposShiftStatus === 'ON_SHIFT';
 
-  const isDriver = useRoleDriver();
   const selectedOrderCounter = useOrders.use.selectedOrderCounter();
   const deliveryType = useOrders.use.deliveryType();
   const fromScanQrCode = useOrders.use.fromScanQrCode();
@@ -76,22 +63,12 @@ const Header = () => {
     [selectedOrderCounter, deliveryType, fromScanQrCode],
   );
 
-  const orderStatusBottomSheetRef = useRef<any>(null);
-  const assignStoreBottomSheetRef = useRef<any>(null);
   const missingInvoiceBottomSheetRef = useRef<any>(null);
 
   const { data: counterData } = useGetOrderStatusCounters();
   const missingInvoiceCount = counterData?.data?.MISSING_INVOICE ?? 0;
   const { data: unseenNotiCounterData } = useGetUnseenNotiCounter(false);
   const unseenNotiCount = unseenNotiCounterData?.data ?? 10;
-
-  const handleOrderStatusBottomSheet = () => {
-    orderStatusBottomSheetRef.current?.present();
-  };
-
-  const handleAssignStoreBottomSheet = () => {
-    assignStoreBottomSheetRef.current?.present();
-  };
 
   const { mutate: assignMeToStore } = useAssignMeToStore(() => {
     refreshTokenAsync();
@@ -224,48 +201,6 @@ const Header = () => {
     missingInvoiceCount,
   ]);
 
-  const renderDriverSelection = useMemo(() => {
-    const isDisable = driverOrderAssignStatus === 'DISABLE';
-    return (
-      <View className="flex flex-row items-center gap-2 mt-1 ">
-        <Pressable onPress={handleOrderStatusBottomSheet}>
-          <Badge
-            icon={
-              <Ionicons
-                name={
-                  isDisable
-                    ? 'notifications-off-outline'
-                    : 'notifications-outline'
-                }
-                size={12}
-                color={isDisable ? 'red' : 'green'}
-              />
-            }
-            label={isDisable ? 'Ngưng nhận đơn' : 'Đang nhận đơn'}
-            variant={isDisable ? 'danger' : 'success'}
-          />
-        </Pressable>
-        <View className="flex flex-row items-center gap-1 flex-1">
-          <Pressable onPress={handleAssignStoreBottomSheet}>
-            <Badge
-              className="self-start"
-              label={
-                driverAssignedStoreCodes
-                  .slice(0, MAX_DRIVER_ASSIGNED_STORE_CODES)
-                  .join(', ') +
-                (driverAssignedStoreCodes.length >
-                MAX_DRIVER_ASSIGNED_STORE_CODES
-                  ? ` (+${driverAssignedStoreCodes.length - MAX_DRIVER_ASSIGNED_STORE_CODES})`
-                  : '')
-              }
-              variant="default"
-            />
-          </Pressable>
-        </View>
-      </View>
-    );
-  }, [userInfo, storeName, driverAssignedStoreCodes, driverOrderAssignStatus]);
-
   if (shouldShowInitialSkeleton) {
     return <OrderListHeaderSkeleton />;
   }
@@ -316,8 +251,7 @@ const Header = () => {
               </View>
             </Pressable>
           </View>
-          {!isDriver && renderStoreSelection}
-          {isDriver && renderDriverSelection}
+          {renderStoreSelection}
         </View>
       </View>
       <View className="z-10 flex-row items-center justify-between gap-3 border-y border-slate-100 bg-slate-50 px-4 py-2">
@@ -326,26 +260,14 @@ const Header = () => {
       <View className="px-4 pt-2">
         <TabsStatus />
       </View>
-      {role !== Role.DRIVER && (
-        <View className="mt-2 px-4">
-          <DeliveryType />
-        </View>
-      )}
+      <View className="mt-2 px-4">
+        <DeliveryType />
+      </View>
       {/* Bottom sheet */}
       <StoreSelection
         onSelect={handleSelectedStore}
         ref={storeRef}
         selectedId={userInfo?.storeCode}
-      />
-      <OrderStatusBottomSheet
-        ref={orderStatusBottomSheetRef}
-        onClose={handleOrderStatusBottomSheet}
-        currentStatus={driverOrderAssignStatus}
-      />
-
-      <AssignStoreBottomSheet
-        ref={assignStoreBottomSheetRef}
-        driverAssignedStoreCodes={driverAssignedStoreCodes}
       />
       <MissingInvoiceBottomSheet ref={missingInvoiceBottomSheetRef} />
     </View>

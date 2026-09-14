@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { queryClient } from '../../../api/shared/api-provider';
 import { createSelectors } from '../../utils/browser';
+import { isAllowedAppPickRole } from '../../utils/employee';
 import type { TokenType, UserInfo } from './utils';
 import {
   getToken,
@@ -31,8 +32,6 @@ const _useAuth = create<AuthState>((set, get) => ({
   userInfo: {
     storeCode: '',
     storeName: '',
-    driverAssignedStoreCodes: [],
-    driverOrderAssignStatus: 'DISABLE',
   },
   setRedirectUrl: (url: string) => {
     set({ urlRedirect: url });
@@ -42,6 +41,11 @@ const _useAuth = create<AuthState>((set, get) => ({
     setUserInfo(userInfo);
   },
   signIn: ({ token, userInfo }: TokenType) => {
+    if (!isAllowedAppPickRole(userInfo.role)) {
+      get().signOut();
+      return;
+    }
+
     setToken(token);
     setUserInfo(userInfo);
     set({ status: 'signIn', token, userInfo });

@@ -1,17 +1,14 @@
 import { axiosClient } from '@/api/shared';
 import { type QueryClient, useInfiniteQuery } from '@tanstack/react-query';
-import { useRole } from '~/src/core/hooks/useRole';
-import { OrderStatus, OrderStatusDriver } from '~/src/types/order';
-import { Role } from '~/src/types/employee';
+import { OrderStatus } from '~/src/types/order';
 
 type Variables = {
-  status?: OrderStatus | OrderStatusDriver;
+  status?: OrderStatus;
   keyword?: string;
   pageIndex?: number;
   expectedDeliveryTime?: string;
   deliveryType?: string | null;
   isMissingInvoiceOrders?: boolean;
-  role?: Role;
 };
 
 export type SearchOrdersResponse = {
@@ -40,10 +37,7 @@ const searchOrders = async (filter?: Variables): Promise<Response> => {
     filter: JSON.stringify({ ...filterCopy }),
   };
 
-  const contextPath =
-    filter?.role === Role.DRIVER ? 'app-pick-driver' : 'app-pick';
-
-  return await axiosClient.get(`${contextPath}/searchOrders`, { params });
+  return await axiosClient.get('app-pick/searchOrders', { params });
 };
 
 export function getNextPageParamSearchOrders(lastPage: Response) {
@@ -57,8 +51,7 @@ export function getNextPageParamSearchOrders(lastPage: Response) {
 /** Prefetch trang 1 (và cấu trúc infinite) khi user bấm tab — cache trùng với useSearchOrders. */
 export function prefetchSearchOrders(
   queryClient: QueryClient,
-  params: Omit<Variables, 'role'>,
-  role: Role,
+  params: Variables,
 ) {
   return queryClient.prefetchInfiniteQuery({
     queryKey: ['searchOrders', params],
@@ -66,7 +59,6 @@ export function prefetchSearchOrders(
       searchOrders({
         ...params,
         pageIndex: pageParam as number,
-        role,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage: Response) =>
@@ -75,18 +67,16 @@ export function prefetchSearchOrders(
 }
 
 export const useSearchOrders = (
-  params?: Omit<Variables, 'role'>,
+  params?: Variables,
   options?: any,
   queryKey?: string,
 ) => {
-  const role = useRole();
   return useInfiniteQuery({
     queryKey: [queryKey || 'searchOrders', params],
     queryFn: ({ pageParam = 0 }) => {
       return searchOrders({
         ...params,
         pageIndex: pageParam as number,
-        role: role as Role,
       });
     },
     getNextPageParam: (lastPage: Response) =>
